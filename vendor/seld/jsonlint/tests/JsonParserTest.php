@@ -114,6 +114,19 @@ bar"}');
         }
     }
 
+    public function testErrorAtBeginning()
+    {
+        $parser = new JsonParser();
+        try {
+            $parser->parse('
+
+');
+            $this->fail('Empty string should be invalid');
+        } catch (ParsingException $e) {
+            $this->assertContains("Parse error on line 1:\n\n^", $e->getMessage());
+        }
+    }
+
     public function testParsesMultiInARow()
     {
         $parser = new JsonParser();
@@ -153,9 +166,9 @@ bar"}');
         $result = $parser->parse('{"a":"b", "a":"c", "a":"d"}', JsonParser::ALLOW_DUPLICATE_KEYS);
         $this->assertThat($result,
             $this->logicalAnd(
-                $this->arrayHasKey('a'),
-                $this->arrayHasKey('a.1'),
-                $this->arrayHasKey('a.2')
+                $this->objectHasAttribute('a'),
+                $this->objectHasAttribute('a.1'),
+                $this->objectHasAttribute('a.2')
             )
         );
     }
@@ -167,10 +180,19 @@ bar"}');
         $result = $parser->parse('{"":"a", "_empty_":"b"}', JsonParser::ALLOW_DUPLICATE_KEYS);
         $this->assertThat($result,
             $this->logicalAnd(
-                $this->arrayHasKey('_empty_'),
-                $this->arrayHasKey('_empty_.1')
+                $this->objectHasAttribute('_empty_'),
+                $this->objectHasAttribute('_empty_.1')
             )
         );
+    }
+
+    public function testParseToArray()
+    {
+        $parser = new JsonParser();
+
+        $json = '{"one":"a", "two":{"three": "four"}, "": "empty"}';
+        $result = $parser->parse($json, JsonParser::PARSE_TO_ASSOC);
+        $this->assertSame(json_decode($json, true), $result);
     }
 
     public function testFileWithBOM()

@@ -81,7 +81,7 @@ class Lexer
     public function showPosition()
     {
         $pre = str_replace("\n", '', $this->getPastInput());
-        $c = str_repeat('-', strlen($pre)); // new Array(pre.length + 1).join("-");
+        $c = str_repeat('-', max(0, strlen($pre) - 1)); // new Array(pre.length + 1).join("-");
 
         return $pre . str_replace("\n", '', $this->getUpcomingInput()) . "\n" . $c . "^";
     }
@@ -146,7 +146,6 @@ class Lexer
                 );
                 $this->yytext .= $match[0];
                 $this->match .= $match[0];
-                $this->matches = $match;
                 $this->yyleng = strlen($this->yytext);
                 $this->more = false;
                 $this->input = substr($this->input, strlen($match[0]));
@@ -174,16 +173,6 @@ class Lexer
         );
     }
 
-    private function begin($condition)
-    {
-        $this->conditionStack[] = $condition;
-    }
-
-    private function popState()
-    {
-        return array_pop($this->conditionStack);
-    }
-
     private function getCurrentRules()
     {
         return $this->conditions[$this->conditionStack[count($this->conditionStack)-1]]['rules'];
@@ -191,7 +180,6 @@ class Lexer
 
     private function performAction($avoiding_name_collisions, $YY_START)
     {
-        $YYSTATE = $YY_START;
         switch ($avoiding_name_collisions) {
         case 0:/* skip whitespace */
             break;
