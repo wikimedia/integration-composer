@@ -1,5 +1,8 @@
 {
 	"require": {
-		"composer/composer": "1.0.0-alpha9"
+		"composer/composer": "dev-master#05e196893b1225898de280ef8f97d5f2be684e8f"
+	},
+	"config": {
+		"optimize-autoloader": true
 	}
 }
