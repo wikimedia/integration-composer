@@ -38,6 +38,7 @@ class ComposerAutoloaderInit9b2b3274931447194267a86cc13c5f1d
             $loader->addClassMap($classMap);
         }
 
+        $loader->setClassMapAuthoritative(true);
         $loader->register(true);
 
         return $loader;
