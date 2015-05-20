@@ -1,6 +1,6 @@
 {
 	"require": {
-		"composer/composer": "dev-master#05e196893b1225898de280ef8f97d5f2be684e8f"
+		"composer/composer": "1.0.0-alpha10"
 	},
 	"config": {
 		"optimize-autoloader": true
