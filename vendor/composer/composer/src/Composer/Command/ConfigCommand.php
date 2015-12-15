@@ -66,7 +66,7 @@ class ConfigCommand extends Command
                 new InputOption('auth', 'a', InputOption::VALUE_NONE, 'Affect auth config file (only used for --editor)'),
                 new InputOption('unset', null, InputOption::VALUE_NONE, 'Unset the given setting-key'),
                 new InputOption('list', 'l', InputOption::VALUE_NONE, 'List configuration settings'),
-                new InputOption('file', 'f', InputOption::VALUE_REQUIRED, 'If you want to choose a different composer.json or config.json'),
+                new InputOption('file', 'f', InputOption::VALUE_REQUIRED, 'If you want to choose a different composer.json or config.json', 'composer.json'),
                 new InputOption('absolute', null, InputOption::VALUE_NONE, 'Returns absolute paths when fetching *-dir config values instead of relative'),
                 new InputArgument('setting-key', null, 'Setting key'),
                 new InputArgument('setting-value', InputArgument::IS_ARRAY, 'Setting value'),
@@ -129,7 +129,7 @@ EOT
     {
         parent::initialize($input, $output);
 
-        if ($input->getOption('global') && null !== $input->getOption('file')) {
+        if ($input->getOption('global') && 'composer.json' !== $input->getOption('file')) {
             throw new \RuntimeException('--file and --global can not be combined');
         }
 
@@ -139,19 +139,14 @@ EOT
         // passed in a file to use
         $configFile = $input->getOption('global')
             ? ($this->config->get('home') . '/config.json')
-            : ($input->getOption('file') ?: trim(getenv('COMPOSER')) ?: 'composer.json');
-
-        // create global composer.json if this was invoked using `composer global config`
-        if ($configFile === 'composer.json' && !file_exists($configFile) && realpath(getcwd()) === realpath($this->config->get('home'))) {
-            file_put_contents($configFile, "{\n}\n");
-        }
+            : $input->getOption('file');
 
         $this->configFile = new JsonFile($configFile);
         $this->configSource = new JsonConfigSource($this->configFile);
 
         $authConfigFile = $input->getOption('global')
             ? ($this->config->get('home') . '/auth.json')
-            : dirname(realpath($configFile)) . '/auth.json';
+            : dirname(realpath($input->getOption('file'))) . '/auth.json';
 
         $this->authConfigFile = new JsonFile($authConfigFile);
         $this->authConfigSource = new JsonConfigSource($this->authConfigFile, true);
@@ -238,19 +233,17 @@ EOT
             } elseif (strpos($settingKey, '.')) {
                 $bits = explode('.', $settingKey);
                 $data = $data['config'];
-                $match = false;
                 foreach ($bits as $bit) {
-                    $key = isset($key) ? $key.'.'.$bit : $bit;
-                    $match = false;
-                    if (isset($data[$key])) {
-                        $match = true;
-                        $data = $data[$key];
-                        unset($key);
+                    if (isset($data[$bit])) {
+                        $data = $data[$bit];
+                    } elseif (isset($data[implode('.', $bits)])) {
+                        // last bit can contain domain names and such so try to join whatever is left if it exists
+                        $data = $data[implode('.', $bits)];
+                        break;
+                    } else {
+                        throw new \RuntimeException($settingKey.' is not defined');
                     }
-                }
-
-                if (!$match) {
-                    throw new \RuntimeException($settingKey.' is not defined.');
+                    array_shift($bits);
                 }
 
                 $value = $data;
@@ -280,7 +273,7 @@ EOT
             'use-include-path' => array($booleanValidator, $booleanNormalizer),
             'preferred-install' => array(
                 function ($val) { return in_array($val, array('auto', 'source', 'dist'), true); },
-                function ($val) { return $val; },
+                function ($val) { return $val; }
             ),
             'store-auths' => array(
                 function ($val) { return in_array($val, array('true', 'false', 'prompt'), true); },
@@ -290,13 +283,11 @@ EOT
                     }
 
                     return $val !== 'false' && (bool) $val;
-                },
+                }
             ),
             'notify-on-install' => array($booleanValidator, $booleanNormalizer),
             'vendor-dir' => array('is_string', function ($val) { return $val; }),
             'bin-dir' => array('is_string', function ($val) { return $val; }),
-            'archive-dir' => array('is_string', function ($val) { return $val; }),
-            'archive-format' => array('is_string', function ($val) { return $val; }),
             'cache-dir' => array('is_string', function ($val) { return $val; }),
             'cache-files-dir' => array('is_string', function ($val) { return $val; }),
             'cache-repo-dir' => array('is_string', function ($val) { return $val; }),
@@ -305,10 +296,6 @@ EOT
             'cache-files-ttl' => array('is_numeric', 'intval'),
             'cache-files-maxsize' => array(
                 function ($val) { return preg_match('/^\s*([0-9.]+)\s*(?:([kmg])(?:i?b)?)?\s*$/i', $val) > 0; },
-                function ($val) { return $val; },
-            ),
-            'bin-compat' => array(
-                function ($val) { return in_array($val, array('auto', 'full')); },
                 function ($val) { return $val; }
             ),
             'discard-changes' => array(
@@ -319,7 +306,7 @@ EOT
                     }
 
                     return $val !== 'false' && (bool) $val;
-                },
+                }
             ),
             'autoloader-suffix' => array('is_string', function ($val) { return $val === 'null' ? null : $val; }),
             'optimize-autoloader' => array($booleanValidator, $booleanNormalizer),
@@ -344,7 +331,7 @@ EOT
                 },
                 function ($vals) {
                     return $vals;
-                },
+                }
             ),
             'github-domains' => array(
                 function ($vals) {
@@ -356,7 +343,7 @@ EOT
                 },
                 function ($vals) {
                     return $vals;
-                },
+                }
             ),
         );
 
@@ -423,15 +410,6 @@ EOT
             throw new \RuntimeException('You must pass the type and a url. Example: php composer.phar config repositories.foo vcs http://bar.com');
         }
 
-        // handle platform
-        if (preg_match('/^platform\.(.+)/', $settingKey, $matches)) {
-            if ($input->getOption('unset')) {
-                return $this->configSource->removeConfigSetting($settingKey);
-            }
-
-            return $this->configSource->addConfigSetting($settingKey, $values[0]);
-        }
-
         // handle github-oauth
         if (preg_match('/^(github-oauth|http-basic)\.(.+)/', $settingKey, $matches)) {
             if ($input->getOption('unset')) {
@@ -472,7 +450,6 @@ EOT
     protected function listConfiguration(array $contents, array $rawContents, OutputInterface $output, $k = null)
     {
         $origK = $k;
-        $io = $this->getIO();
         foreach ($contents as $key => $value) {
             if ($k === null && !in_array($key, array('config', 'repositories'))) {
                 continue;
@@ -483,7 +460,13 @@ EOT
             if (is_array($value) && (!is_numeric(key($value)) || ($key === 'repositories' && null === $k))) {
                 $k .= preg_replace('{^config\.}', '', $key . '.');
                 $this->listConfiguration($value, $rawVal, $output, $k);
-                $k = $origK;
+
+                if (substr_count($k, '.') > 1) {
+                    $k = str_split($k, strrpos($k, '.', -2));
+                    $k = $k[0] . '.';
+                } else {
+                    $k = $origK;
+                }
 
                 continue;
             }
@@ -501,9 +484,9 @@ EOT
             }
 
             if (is_string($rawVal) && $rawVal != $value) {
-                $io->write('[<comment>' . $k . $key . '</comment>] <info>' . $rawVal . ' (' . $value . ')</info>');
+                $this->getIO()->write('[<comment>' . $k . $key . '</comment>] <info>' . $rawVal . ' (' . $value . ')</info>');
             } else {
-                $io->write('[<comment>' . $k . $key . '</comment>] <info>' . $value . '</info>');
+                $this->getIO()->write('[<comment>' . $k . $key . '</comment>] <info>' . $value . '</info>');
             }
         }
     }

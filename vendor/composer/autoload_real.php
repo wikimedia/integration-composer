@@ -41,11 +41,6 @@ class ComposerAutoloaderInit9b2b3274931447194267a86cc13c5f1d
         $loader->setClassMapAuthoritative(true);
         $loader->register(true);
 
-        $includeFiles = require __DIR__ . '/autoload_files.php';
-        foreach ($includeFiles as $file) {
-            composerRequire9b2b3274931447194267a86cc13c5f1d($file);
-        }
-
         return $loader;
     }
 }

@@ -88,9 +88,10 @@ class Filesystem
      * Uses the process component if proc_open is enabled on the PHP
      * installation.
      *
-     * @param  string            $directory
-     * @throws \RuntimeException
+     * @param  string $directory
      * @return bool
+     *
+     * @throws \RuntimeException
      */
     public function removeDirectory($directory)
     {
@@ -173,9 +174,10 @@ class Filesystem
     /**
      * Attempts to unlink a file and in case of failure retries after 350ms on windows
      *
-     * @param  string            $path
-     * @throws \RuntimeException
+     * @param  string $path
      * @return bool
+     *
+     * @throws \RuntimeException
      */
     public function unlink($path)
     {
@@ -198,9 +200,10 @@ class Filesystem
     /**
      * Attempts to rmdir a file and in case of failure retries after 350ms on windows
      *
-     * @param  string            $path
-     * @throws \RuntimeException
+     * @param  string $path
      * @return bool
+     *
+     * @throws \RuntimeException
      */
     public function rmdir($path)
     {
@@ -266,7 +269,7 @@ class Filesystem
 
         if (defined('PHP_WINDOWS_VERSION_BUILD')) {
             // Try to copy & delete - this is a workaround for random "Access denied" errors.
-            $command = sprintf('xcopy %s %s /E /I /Q /Y', ProcessExecutor::escape($source), ProcessExecutor::escape($target));
+            $command = sprintf('xcopy %s %s /E /I /Q', ProcessExecutor::escape($source), ProcessExecutor::escape($target));
             $result = $this->processExecutor->execute($command, $output);
 
             // clear stat cache because external processes aren't tracked by the php stat cache
@@ -313,7 +316,7 @@ class Filesystem
         $to = lcfirst($this->normalizePath($to));
 
         if ($directories) {
-            $from = rtrim($from, '/') . '/dummy_file';
+            $from .= '/dummy_file';
         }
 
         if (dirname($from) === dirname($to)) {
@@ -505,34 +508,7 @@ class Filesystem
         return unlink($path);
     }
 
-    /**
-     * Creates a relative symlink from $link to $target
-     *
-     * @param string $target The path of the binary file to be symlinked
-     * @param string $link The path where the symlink should be created
-     * @return bool
-     */
-    public function relativeSymlink($target, $link)
-    {
-        $cwd = getcwd();
-
-        $relativePath = $this->findShortestPath($link, $target);
-        chdir(dirname($link));
-        $result = @symlink($relativePath, $link);
-
-        chdir($cwd);
-
-        return (bool) $result;
-    }
-
-    /**
-     * return true if that directory is a symlink.
-     *
-     * @param string $directory
-     *
-     * @return bool
-     */
-    public function isSymlinkedDirectory($directory)
+    private function isSymlinkedDirectory($directory)
     {
         if (!is_dir($directory)) {
             return false;

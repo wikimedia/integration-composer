@@ -12,10 +12,8 @@
 
 namespace Composer\Repository;
 
-use Composer\Config;
-use Composer\Package\PackageInterface;
 use Composer\Package\CompletePackage;
-use Composer\Semver\VersionParser;
+use Composer\Package\Version\VersionParser;
 use Composer\Plugin\PluginInterface;
 
 /**
@@ -25,48 +23,17 @@ class PlatformRepository extends ArrayRepository
 {
     const PLATFORM_PACKAGE_REGEX = '{^(?:php(?:-64bit)?|hhvm|(?:ext|lib)-[^/]+)$}i';
 
-    /**
-     * Defines overrides so that the platform can be mocked
-     *
-     * Should be an array of package name => version number mappings
-     *
-     * @var array
-     */
-    private $overrides = array();
-
-    public function __construct(array $packages = array(), array $overrides = array())
-    {
-        foreach ($overrides as $name => $version) {
-            $this->overrides[strtolower($name)] = array('name' => $name, 'version' => $version);
-        }
-        parent::__construct($packages);
-    }
-
     protected function initialize()
     {
         parent::initialize();
 
         $versionParser = new VersionParser();
 
-        // Add each of the override versions as options.
-        // Later we might even replace the extensions instead.
-        foreach ($this->overrides as $override) {
-            // Check that it's a platform package.
-            if (!preg_match(self::PLATFORM_PACKAGE_REGEX, $override['name'])) {
-                throw new \InvalidArgumentException('Invalid platform package name in config.platform: '.$override['name']);
-            }
-
-            $version = $versionParser->normalize($override['version']);
-            $package = new CompletePackage($override['name'], $version, $override['version']);
-            $package->setDescription('Overridden virtual platform package '.$override['name']);
-            parent::addPackage($package);
-        }
-
         $prettyVersion = PluginInterface::PLUGIN_API_VERSION;
         $version = $versionParser->normalize($prettyVersion);
         $composerPluginApi = new CompletePackage('composer-plugin-api', $version, $prettyVersion);
         $composerPluginApi->setDescription('The Composer Plugin API');
-        $this->addPackage($composerPluginApi);
+        parent::addPackage($composerPluginApi);
 
         try {
             $prettyVersion = PHP_VERSION;
@@ -78,12 +45,12 @@ class PlatformRepository extends ArrayRepository
 
         $php = new CompletePackage('php', $version, $prettyVersion);
         $php->setDescription('The PHP interpreter');
-        $this->addPackage($php);
+        parent::addPackage($php);
 
         if (PHP_INT_SIZE === 8) {
             $php64 = new CompletePackage('php-64bit', $version, $prettyVersion);
             $php64->setDescription('The PHP interpreter (64bit)');
-            $this->addPackage($php64);
+            parent::addPackage($php64);
         }
 
         $loadedExtensions = get_loaded_extensions();
@@ -106,7 +73,7 @@ class PlatformRepository extends ArrayRepository
             $packageName = $this->buildPackageName($name);
             $ext = new CompletePackage($packageName, $version, $prettyVersion);
             $ext->setDescription('The '.$name.' PHP extension');
-            $this->addPackage($ext);
+            parent::addPackage($ext);
         }
 
         // Another quick loop, just for possible libraries
@@ -176,7 +143,7 @@ class PlatformRepository extends ArrayRepository
 
             $lib = new CompletePackage('lib-'.$name, $version, $prettyVersion);
             $lib->setDescription('The '.$name.' PHP library');
-            $this->addPackage($lib);
+            parent::addPackage($lib);
         }
 
         if (defined('HHVM_VERSION')) {
@@ -190,20 +157,8 @@ class PlatformRepository extends ArrayRepository
 
             $hhvm = new CompletePackage('hhvm', $version, $prettyVersion);
             $hhvm->setDescription('The HHVM Runtime (64bit)');
-            $this->addPackage($hhvm);
+            parent::addPackage($hhvm);
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function addPackage(PackageInterface $package)
-    {
-        // Skip if overridden
-        if (isset($this->overrides[strtolower($package->getName())])) {
-            return;
-        }
-        parent::addPackage($package);
     }
 
     private function buildPackageName($name)

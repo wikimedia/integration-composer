@@ -65,25 +65,12 @@ class AllFunctionalTest extends \PHPUnit_Framework_TestCase
             $this->markTestSkipped('Building the phar does not work on HHVM.');
         }
 
-        $target = dirname(self::$pharPath);
         $fs = new Filesystem;
-        $fs->removeDirectory($target);
-        $fs->ensureDirectoryExists($target);
-        chdir($target);
+        $fs->removeDirectory(dirname(self::$pharPath));
+        $fs->ensureDirectoryExists(dirname(self::$pharPath));
+        chdir(dirname(self::$pharPath));
 
-        $it = new \RecursiveDirectoryIterator(__DIR__.'/../../../', \RecursiveDirectoryIterator::SKIP_DOTS);
-        $ri = new \RecursiveIteratorIterator($it, \RecursiveIteratorIterator::SELF_FIRST);
-
-        foreach ($ri as $file) {
-            $targetPath = $target . DIRECTORY_SEPARATOR . $ri->getSubPathName();
-            if ($file->isDir()) {
-                $fs->ensureDirectoryExists($targetPath);
-            } else {
-                copy($file->getPathname(), $targetPath);
-            }
-        }
-
-        $proc = new Process('php '.escapeshellarg('./bin/compile'), $target);
+        $proc = new Process('php '.escapeshellarg(__DIR__.'/../../../bin/compile'), dirname(self::$pharPath));
         $exitcode = $proc->run();
         if ($exitcode !== 0 || trim($proc->getOutput())) {
             $this->fail($proc->getOutput());

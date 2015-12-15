@@ -105,7 +105,9 @@ class Git
                         return;
                     }
                 }
-            } elseif ($this->isAuthenticationFailure($url, $match)) { // private non-github repo that failed to authenticate
+            } elseif ( // private non-github repo that failed to authenticate
+                $this->isAuthenticationFailure($url, $match)
+            ) {
                 if (strpos($match[2], '@')) {
                     list($authParts, $match[2]) = explode('@', $match[2], 2);
                 }
@@ -117,7 +119,7 @@ class Git
                     $defaultUsername = null;
                     if (isset($authParts) && $authParts) {
                         if (false !== strpos($authParts, ':')) {
-                            list($defaultUsername, ) = explode(':', $authParts, 2);
+                            list($defaultUsername,) = explode(':', $authParts, 2);
                         } else {
                             $defaultUsername = $authParts;
                         }
@@ -152,8 +154,7 @@ class Git
         }
     }
 
-    private function isAuthenticationFailure($url, &$match)
-    {
+    private function isAuthenticationFailure ($url, &$match) {
         if (!preg_match('{(https?://)([^/]+)(.*)$}i', $url, $match)) {
             return false;
         }
@@ -212,9 +213,6 @@ class Git
 
     private function throwException($message, $url)
     {
-        // git might delete a directory when it fails and php will not know
-        clearstatcache();
-
         if (0 !== $this->process->execute('git --version', $ignoredOutput)) {
             throw new \RuntimeException('Failed to clone '.self::sanitizeUrl($url).', git was not found, check that it is installed and in your PATH env.' . "\n\n" . $this->process->getErrorOutput());
         }

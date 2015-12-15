@@ -12,11 +12,12 @@
 
 namespace Composer\Test\Repository;
 
+use Composer\Repository\ComposerRepository;
 use Composer\IO\NullIO;
 use Composer\Test\Mock\FactoryMock;
 use Composer\TestCase;
 use Composer\Package\Loader\ArrayLoader;
-use Composer\Semver\VersionParser;
+use Composer\Package\Version\VersionParser;
 
 class ComposerRepositoryTest extends TestCase
 {
@@ -75,8 +76,8 @@ class ComposerRepositoryTest extends TestCase
                 array('foo/bar' => array(
                     'name' => 'foo/bar',
                     'versions' => array(
-                        '1.0.0' => array('name' => 'foo/bar', 'version' => '1.0.0'),
-                    ),
+                        '1.0.0' => array('name' => 'foo/bar', 'version' => '1.0.0')
+                    )
                 )),
             ),
             // New repository format
@@ -110,7 +111,7 @@ class ComposerRepositoryTest extends TestCase
         $properties = array(
             'cache' => $cache,
             'loader' => new ArrayLoader(),
-            'providerListing' => array('p/a.json' => array('sha256' => 'xxx')),
+            'providerListing' => array('p/a.json' => array('sha256' => 'xxx'))
         );
 
         foreach ($properties as $property => $value) {
@@ -140,7 +141,7 @@ class ComposerRepositoryTest extends TestCase
                         'name' => 'a',
                         'version' => '0.6',
                     )),
-                ),
+                )
             )));
 
         $pool = $this->getMock('Composer\DependencyResolver\Pool');

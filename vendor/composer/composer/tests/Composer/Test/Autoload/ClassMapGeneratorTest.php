@@ -1,19 +1,12 @@
 <?php
 
 /*
- * This file is part of Composer.
+ * This file was copied from the Symfony package.
  *
- * (c) Nils Adermann <naderman@naderman.de>
- *     Jordi Boggiano <j.boggiano@seld.be>
+ * (c) Fabien Potencier <fabien@symfony.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
- */
-
-/*
- * This file is copied from the Symfony package.
- *
- * (c) Fabien Potencier <fabien@symfony.com>
  */
 
 namespace Composer\Test\Autoload;
@@ -34,10 +27,6 @@ class ClassMapGeneratorTest extends \PHPUnit_Framework_TestCase
 
     public function getTestCreateMapTests()
     {
-        if (PHP_VERSION_ID == 50303) {
-            $this->markTestSkipped('Test segfaults on travis 5.3.3 due to ClassMap\LongString');
-        }
-
         $data = array(
             array(__DIR__.'/Fixtures/Namespaced', array(
                 'Namespaced\\Bar' => realpath(__DIR__).'/Fixtures/Namespaced/Bar.inc',
@@ -64,7 +53,6 @@ class ClassMapGeneratorTest extends \PHPUnit_Framework_TestCase
                 'ClassMap\\SomeInterface' => realpath(__DIR__).'/Fixtures/classmap/SomeInterface.php',
                 'ClassMap\\SomeParent'    => realpath(__DIR__).'/Fixtures/classmap/SomeParent.php',
                 'ClassMap\\SomeClass'     => realpath(__DIR__).'/Fixtures/classmap/SomeClass.php',
-                'ClassMap\\LongString'    => realpath(__DIR__).'/Fixtures/classmap/LongString.php',
                 'Foo\\LargeClass'         => realpath(__DIR__).'/Fixtures/classmap/LargeClass.php',
                 'Foo\\LargeGap'           => realpath(__DIR__).'/Fixtures/classmap/LargeGap.php',
                 'Foo\\MissingSpace'       => realpath(__DIR__).'/Fixtures/classmap/MissingSpace.php',
@@ -76,7 +64,7 @@ class ClassMapGeneratorTest extends \PHPUnit_Framework_TestCase
             array(__DIR__.'/Fixtures/template', array()),
         );
 
-        if (PHP_VERSION_ID >= 50400) {
+        if (version_compare(PHP_VERSION, '5.4', '>=')) {
             $data[] = array(__DIR__.'/Fixtures/php5.4', array(
                 'TFoo' => __DIR__.'/Fixtures/php5.4/traits.php',
                 'CFoo' => __DIR__.'/Fixtures/php5.4/traits.php',

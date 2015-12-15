@@ -16,7 +16,7 @@ use Composer\DependencyResolver\Pool;
 use Composer\DependencyResolver\DefaultPolicy;
 use Composer\Factory;
 use Composer\Package\CompletePackageInterface;
-use Composer\Semver\VersionParser;
+use Composer\Package\Version\VersionParser;
 use Composer\Plugin\CommandEvent;
 use Composer\Plugin\PluginEvents;
 use Symfony\Component\Console\Input\InputInterface;
@@ -28,7 +28,6 @@ use Composer\Repository\CompositeRepository;
 use Composer\Repository\ComposerRepository;
 use Composer\Repository\PlatformRepository;
 use Composer\Repository\RepositoryInterface;
-use Composer\Spdx\SpdxLicenses;
 
 /**
  * @author Robert Schönthal <seroscho@googlemail.com>
@@ -71,7 +70,6 @@ EOT
         $platformRepo = new PlatformRepository;
 
         $composer = $this->getComposer(false);
-        $io = $this->getIO();
         if ($input->getOption('self')) {
             $package = $this->getComposer()->getPackage();
             $repos = $installedRepo = new ArrayRepository(array($package));
@@ -84,17 +82,17 @@ EOT
             if ($composer) {
                 $repos = new CompositeRepository($composer->getRepositoryManager()->getRepositories());
             } else {
-                $defaultRepos = Factory::createDefaultRepositories($io);
+                $defaultRepos = Factory::createDefaultRepositories($this->getIO());
                 $repos = new CompositeRepository($defaultRepos);
-                $io->writeError('No composer.json found in the current directory, showing available packages from ' . implode(', ', array_keys($defaultRepos)));
+                $this->getIO()->writeError('No composer.json found in the current directory, showing available packages from ' . implode(', ', array_keys($defaultRepos)));
             }
         } elseif ($composer) {
             $localRepo = $composer->getRepositoryManager()->getLocalRepository();
             $installedRepo = new CompositeRepository(array($localRepo, $platformRepo));
             $repos = new CompositeRepository(array_merge(array($installedRepo), $composer->getRepositoryManager()->getRepositories()));
         } else {
-            $defaultRepos = Factory::createDefaultRepositories($io);
-            $io->writeError('No composer.json found in the current directory, showing available packages from ' . implode(', ', array_keys($defaultRepos)));
+            $defaultRepos = Factory::createDefaultRepositories($this->getIO());
+            $this->getIO()->writeError('No composer.json found in the current directory, showing available packages from ' . implode(', ', array_keys($defaultRepos)));
             $installedRepo = $platformRepo;
             $repos = new CompositeRepository(array_merge(array($installedRepo), $defaultRepos));
         }
@@ -117,18 +115,18 @@ EOT
                 $versions = array($package->getPrettyVersion() => $package->getVersion());
             }
 
-            $this->printMeta($package, $versions, $installedRepo);
-            $this->printLinks($package, 'requires');
-            $this->printLinks($package, 'devRequires', 'requires (dev)');
+            $this->printMeta($input, $output, $package, $versions, $installedRepo, $repos);
+            $this->printLinks($input, $output, $package, 'requires');
+            $this->printLinks($input, $output, $package, 'devRequires', 'requires (dev)');
             if ($package->getSuggests()) {
-                $io->write("\n<info>suggests</info>");
+                $this->getIO()->write("\n<info>suggests</info>");
                 foreach ($package->getSuggests() as $suggested => $reason) {
-                    $io->write($suggested . ' <comment>' . $reason . '</comment>');
+                    $this->getIO()->write($suggested . ' <comment>' . $reason . '</comment>');
                 }
             }
-            $this->printLinks($package, 'provides');
-            $this->printLinks($package, 'conflicts');
-            $this->printLinks($package, 'replaces');
+            $this->printLinks($input, $output, $package, 'provides');
+            $this->printLinks($input, $output, $package, 'conflicts');
+            $this->printLinks($input, $output, $package, 'replaces');
 
             return;
         }
@@ -174,7 +172,7 @@ EOT
         foreach (array('<info>platform</info>:' => true, '<comment>available</comment>:' => false, '<info>installed</info>:' => true) as $type => $showVersion) {
             if (isset($packages[$type])) {
                 if ($tree) {
-                    $io->write($type);
+                    $this->getIO()->write($type);
                 }
                 ksort($packages[$type]);
 
@@ -182,7 +180,7 @@ EOT
                 foreach ($packages[$type] as $package) {
                     if (is_object($package)) {
                         $nameLength = max($nameLength, strlen($package->getPrettyName()));
-                        $versionLength = max($versionLength, strlen($package->getFullPrettyVersion()));
+                        $versionLength = max($versionLength, strlen($this->versionParser->formatVersion($package)));
                     } else {
                         $nameLength = max($nameLength, $package);
                     }
@@ -197,11 +195,6 @@ EOT
                     $width--;
                 }
 
-                if ($input->getOption('path') && null === $composer) {
-                    $io->writeError('No composer.json found in the current directory, disabling "path" option');
-                    $input->setOption('path', false);
-                }
-
                 $writePath = !$input->getOption('name-only') && $input->getOption('path');
                 $writeVersion = !$input->getOption('name-only') && !$input->getOption('path') && $showVersion && ($nameLength + $versionLength + 3 <= $width);
                 $writeDescription = !$input->getOption('name-only') && !$input->getOption('path') && ($nameLength + ($showVersion ? $versionLength : 0) + 24 <= $width);
@@ -210,7 +203,7 @@ EOT
                         $output->write($indent . str_pad($package->getPrettyName(), $nameLength, ' '), false);
 
                         if ($writeVersion) {
-                            $output->write(' ' . str_pad($package->getFullPrettyVersion(), $versionLength, ' '), false);
+                            $output->write(' ' . str_pad($this->versionParser->formatVersion($package), $versionLength, ' '), false);
                         }
 
                         if ($writeDescription) {
@@ -229,10 +222,10 @@ EOT
                     } else {
                         $output->write($indent . $package);
                     }
-                    $io->write('');
+                    $this->getIO()->write('');
                 }
                 if ($tree) {
-                    $io->write('');
+                    $this->getIO()->write('');
                 }
             }
         }
@@ -245,8 +238,8 @@ EOT
      * @param  RepositoryInterface       $repos
      * @param  string                    $name
      * @param  string                    $version
-     * @throws \InvalidArgumentException
      * @return array                     array(CompletePackageInterface, array of versions)
+     * @throws \InvalidArgumentException
      */
     protected function getPackage(RepositoryInterface $installedRepo, RepositoryInterface $repos, $name, $version = null)
     {
@@ -279,9 +272,9 @@ EOT
             $matches[$index] = $package->getId();
         }
 
-        // select preferred package according to policy rules
-        if (!$matchedPackage && $matches && $preferred = $policy->selectPreferredPackages($pool, array(), $matches)) {
-            $matchedPackage = $pool->literalToPackage($preferred[0]);
+        // select prefered package according to policy rules
+        if (!$matchedPackage && $matches && $prefered = $policy->selectPreferedPackages($pool, array(), $matches)) {
+            $matchedPackage = $pool->literalToPackage($prefered[0]);
         }
 
         return array($matchedPackage, $versions);
@@ -290,56 +283,55 @@ EOT
     /**
      * prints package meta data
      */
-    protected function printMeta(CompletePackageInterface $package, array $versions, RepositoryInterface $installedRepo)
+    protected function printMeta(InputInterface $input, OutputInterface $output, CompletePackageInterface $package, array $versions, RepositoryInterface $installedRepo, RepositoryInterface $repos)
     {
-        $io = $this->getIO();
-        $io->write('<info>name</info>     : ' . $package->getPrettyName());
-        $io->write('<info>descrip.</info> : ' . $package->getDescription());
-        $io->write('<info>keywords</info> : ' . join(', ', $package->getKeywords() ?: array()));
-        $this->printVersions($package, $versions, $installedRepo);
-        $io->write('<info>type</info>     : ' . $package->getType());
-        $this->printLicenses($package);
-        $io->write('<info>source</info>   : ' . sprintf('[%s] <comment>%s</comment> %s', $package->getSourceType(), $package->getSourceUrl(), $package->getSourceReference()));
-        $io->write('<info>dist</info>     : ' . sprintf('[%s] <comment>%s</comment> %s', $package->getDistType(), $package->getDistUrl(), $package->getDistReference()));
-        $io->write('<info>names</info>    : ' . implode(', ', $package->getNames()));
+        $this->getIO()->write('<info>name</info>     : ' . $package->getPrettyName());
+        $this->getIO()->write('<info>descrip.</info> : ' . $package->getDescription());
+        $this->getIO()->write('<info>keywords</info> : ' . join(', ', $package->getKeywords() ?: array()));
+        $this->printVersions($input, $output, $package, $versions, $installedRepo, $repos);
+        $this->getIO()->write('<info>type</info>     : ' . $package->getType());
+        $this->getIO()->write('<info>license</info>  : ' . implode(', ', $package->getLicense()));
+        $this->getIO()->write('<info>source</info>   : ' . sprintf('[%s] <comment>%s</comment> %s', $package->getSourceType(), $package->getSourceUrl(), $package->getSourceReference()));
+        $this->getIO()->write('<info>dist</info>     : ' . sprintf('[%s] <comment>%s</comment> %s', $package->getDistType(), $package->getDistUrl(), $package->getDistReference()));
+        $this->getIO()->write('<info>names</info>    : ' . implode(', ', $package->getNames()));
 
         if ($package->isAbandoned()) {
             $replacement = ($package->getReplacementPackage() !== null)
                 ? ' The author suggests using the ' . $package->getReplacementPackage(). ' package instead.'
                 : null;
 
-            $io->writeError(
-                sprintf('<warning>Attention: This package is abandoned and no longer maintained.%s</warning>', $replacement)
+            $this->getIO()->writeError(
+                sprintf('<error>Attention: This package is abandoned and no longer maintained.%s</error>', $replacement)
             );
         }
 
         if ($package->getSupport()) {
-            $io->write("\n<info>support</info>");
+            $this->getIO()->write("\n<info>support</info>");
             foreach ($package->getSupport() as $type => $value) {
-                $io->write('<comment>' . $type . '</comment> : '.$value);
+                $this->getIO()->write('<comment>' . $type . '</comment> : '.$value);
             }
         }
 
         if ($package->getAutoload()) {
-            $io->write("\n<info>autoload</info>");
+            $this->getIO()->write("\n<info>autoload</info>");
             foreach ($package->getAutoload() as $type => $autoloads) {
-                $io->write('<comment>' . $type . '</comment>');
+                $this->getIO()->write('<comment>' . $type . '</comment>');
 
                 if ($type === 'psr-0') {
                     foreach ($autoloads as $name => $path) {
-                        $io->write(($name ?: '*') . ' => ' . (is_array($path) ? implode(', ', $path) : ($path ?: '.')));
+                        $this->getIO()->write(($name ?: '*') . ' => ' . (is_array($path) ? implode(', ', $path) : ($path ?: '.')));
                     }
                 } elseif ($type === 'psr-4') {
                     foreach ($autoloads as $name => $path) {
-                        $io->write(($name ?: '*') . ' => ' . (is_array($path) ? implode(', ', $path) : ($path ?: '.')));
+                        $this->getIO()->write(($name ?: '*') . ' => ' . (is_array($path) ? implode(', ', $path) : ($path ?: '.')));
                     }
                 } elseif ($type === 'classmap') {
-                    $io->write(implode(', ', $autoloads));
+                    $this->getIO()->write(implode(', ', $autoloads));
                 }
             }
             if ($package->getIncludePaths()) {
-                $io->write('<comment>include-path</comment>');
-                $io->write(implode(', ', $package->getIncludePaths()));
+                $this->getIO()->write('<comment>include-path</comment>');
+                $this->getIO()->write(implode(', ', $package->getIncludePaths()));
             }
         }
     }
@@ -347,7 +339,7 @@ EOT
     /**
      * prints all available versions of this package and highlights the installed one if any
      */
-    protected function printVersions(CompletePackageInterface $package, array $versions, RepositoryInterface $installedRepo)
+    protected function printVersions(InputInterface $input, OutputInterface $output, CompletePackageInterface $package, array $versions, RepositoryInterface $installedRepo, RepositoryInterface $repos)
     {
         uasort($versions, 'version_compare');
         $versions = array_keys(array_reverse($versions));
@@ -369,50 +361,21 @@ EOT
     /**
      * print link objects
      *
+     * @param InputInterface           $input
+     * @param OutputInterface          $output
      * @param CompletePackageInterface $package
      * @param string                   $linkType
      * @param string                   $title
      */
-    protected function printLinks(CompletePackageInterface $package, $linkType, $title = null)
+    protected function printLinks(InputInterface $input, OutputInterface $output, CompletePackageInterface $package, $linkType, $title = null)
     {
         $title = $title ?: $linkType;
-        $io = $this->getIO();
         if ($links = $package->{'get'.ucfirst($linkType)}()) {
-            $io->write("\n<info>" . $title . "</info>");
+            $this->getIO()->write("\n<info>" . $title . "</info>");
 
             foreach ($links as $link) {
-                $io->write($link->getTarget() . ' <comment>' . $link->getPrettyConstraint() . '</comment>');
+                $this->getIO()->write($link->getTarget() . ' <comment>' . $link->getPrettyConstraint() . '</comment>');
             }
-        }
-    }
-
-    /**
-     * Prints the licenses of a package with metadata
-     *
-     * @param CompletePackageInterface $package
-     */
-    protected function printLicenses(CompletePackageInterface $package)
-    {
-        $spdxLicenses = new SpdxLicenses();
-
-        $licenses = $package->getLicense();
-        $io = $this->getIO();
-
-        foreach ($licenses as $licenseId) {
-            $license = $spdxLicenses->getLicenseByIdentifier($licenseId); // keys: 0 fullname, 1 osi, 2 url
-
-            if (!$license) {
-                $out = $licenseId;
-            } else {
-                // is license OSI approved?
-                if ($license[1] === true) {
-                    $out = sprintf('%s (%s) (OSI approved) %s', $license[0], $licenseId, $license[2]);
-                } else {
-                    $out = sprintf('%s (%s) %s', $license[0], $licenseId, $license[2]);
-                }
-            }
-
-            $io->write('<info>license</info>  : ' . $out);
         }
     }
 }

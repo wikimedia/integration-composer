@@ -100,17 +100,18 @@ EOT
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $config = Factory::createConfig();
-        $io = $this->getIO();
 
-        $this->updatePreferredOptions($config, $input, $preferSource, $preferDist, true);
+        $preferSource = false;
+        $preferDist = false;
+        $this->updatePreferredOptions($config, $input, $preferSource, $preferDist);
 
         if ($input->getOption('no-custom-installers')) {
-            $io->writeError('<warning>You are using the deprecated option "no-custom-installers". Use "no-plugins" instead.</warning>');
+            $this->getIO()->writeError('<warning>You are using the deprecated option "no-custom-installers". Use "no-plugins" instead.</warning>');
             $input->setOption('no-plugins', true);
         }
 
         return $this->installProject(
-            $io,
+            $this->getIO(),
             $config,
             $input->getArgument('package'),
             $input->getArgument('directory'),
@@ -276,12 +277,9 @@ EOT
         $pool = new Pool($stability);
         $pool->addRepository($sourceRepo);
 
-        // using those 3 constants to build a version without the 'extra' bit that can contain garbage
-        $phpVersion = PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION.'.'.PHP_RELEASE_VERSION;
-
         // find the latest version if there are multiple
         $versionSelector = new VersionSelector($pool);
-        $package = $versionSelector->findBestCandidate($name, $packageVersion, $phpVersion, $stability);
+        $package = $versionSelector->findBestCandidate($name, $packageVersion);
 
         if (!$package) {
             throw new \InvalidArgumentException("Could not find package $name" . ($packageVersion ? " with version $packageVersion." : " with stability $stability."));
@@ -292,17 +290,7 @@ EOT
             $directory = getcwd() . DIRECTORY_SEPARATOR . array_pop($parts);
         }
 
-        // handler Ctrl+C for unix-like systems
-        if (function_exists('pcntl_signal')) {
-            declare (ticks = 100);
-            pcntl_signal(SIGINT, function () use ($directory) {
-                $fs = new Filesystem();
-                $fs->removeDirectory($directory);
-                exit(130);
-            });
-        }
-
-        $io->writeError('<info>Installing ' . $package->getName() . ' (' . $package->getFullPrettyVersion(false) . ')</info>');
+        $io->writeError('<info>Installing ' . $package->getName() . ' (' . VersionParser::formatVersion($package, false) . ')</info>');
 
         if ($disablePlugins) {
             $io->writeError('<info>Plugins have been disabled.</info>');
@@ -321,7 +309,7 @@ EOT
         $im = $this->createInstallationManager();
         $im->addInstaller($projectInstaller);
         $im->install(new InstalledFilesystemRepository(new JsonFile('php://memory')), new InstallOperation($package));
-        $im->notifyInstalls($io);
+        $im->notifyInstalls();
 
         $installedFromVcs = 'source' === $package->getInstallationSource();
 
@@ -350,19 +338,18 @@ EOT
      * Updated preferSource or preferDist based on the preferredInstall config option
      * @param Config         $config
      * @param InputInterface $input
-     * @param bool           $preferSource
-     * @param bool           $preferDist
+     * @param boolean        $preferSource
+     * @param boolean        $preferDist
      */
-    protected function updatePreferredOptions(Config $config, InputInterface $input, &$preferSource, &$preferDist, $keepVcsRequiresPreferSource = false)
+    protected function updatePreferredOptions(Config $config, InputInterface $input, &$preferSource, &$preferDist)
     {
-        $preferSource = false;
-        $preferDist = false;
-
         switch ($config->get('preferred-install')) {
             case 'source':
                 $preferSource = true;
+                $preferDist = false;
                 break;
             case 'dist':
+                $preferSource = false;
                 $preferDist = true;
                 break;
             case 'auto':
@@ -371,8 +358,8 @@ EOT
                 break;
         }
 
-        if ($input->getOption('prefer-source') || $input->getOption('prefer-dist') || ($keepVcsRequiresPreferSource && $input->getOption('keep-vcs'))) {
-            $preferSource = $input->getOption('prefer-source') || ($keepVcsRequiresPreferSource && $input->getOption('keep-vcs'));
+        if ($input->getOption('prefer-source') || $input->getOption('prefer-dist')) {
+            $preferSource = $input->getOption('prefer-source');
             $preferDist = $input->getOption('prefer-dist');
         }
     }

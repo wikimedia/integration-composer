@@ -13,7 +13,6 @@
 namespace Composer\IO;
 
 use Composer\Config;
-use Composer\Util\ProcessExecutor;
 
 abstract class BaseIO implements IOInterface
 {
@@ -76,8 +75,5 @@ abstract class BaseIO implements IOInterface
                 $this->setAuthentication($domain, $cred['username'], $cred['password']);
             }
         }
-
-        // setup process timeout
-        ProcessExecutor::setTimeout((int) $config->get('process-timeout'));
     }
 }

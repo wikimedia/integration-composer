@@ -14,6 +14,7 @@ namespace Composer\Downloader;
 
 use Composer\Config;
 use Composer\Package\PackageInterface;
+use Composer\Package\Version\VersionParser;
 use Composer\Util\ProcessExecutor;
 use Composer\IO\IOInterface;
 use Composer\Util\Filesystem;
@@ -53,7 +54,7 @@ abstract class VcsDownloader implements DownloaderInterface, ChangeReportInterfa
             throw new \InvalidArgumentException('Package '.$package->getPrettyName().' is missing reference information');
         }
 
-        $this->io->writeError("  - Installing <info>" . $package->getName() . "</info> (<comment>" . $package->getFullPrettyVersion() . "</comment>)");
+        $this->io->writeError("  - Installing <info>" . $package->getName() . "</info> (<comment>" . VersionParser::formatVersion($package) . "</comment>)");
         $this->filesystem->emptyDirectory($path);
 
         $urls = $package->getSourceUrls();
@@ -99,8 +100,8 @@ abstract class VcsDownloader implements DownloaderInterface, ChangeReportInterfa
             }
             $name .= ' '.$initial->getPrettyVersion();
         } else {
-            $from = $initial->getFullPrettyVersion();
-            $to = $target->getFullPrettyVersion();
+            $from = VersionParser::formatVersion($initial);
+            $to = VersionParser::formatVersion($target);
         }
 
         $this->io->writeError("  - Updating <info>" . $name . "</info> (<comment>" . $from . "</comment> => <comment>" . $to . "</comment>)");
@@ -144,9 +145,6 @@ abstract class VcsDownloader implements DownloaderInterface, ChangeReportInterfa
                 $logs = implode("\n", array_map(function ($line) {
                     return '      ' . $line;
                 }, explode("\n", $logs)));
-
-                // escape angle brackets for proper output in the console
-                $logs = str_replace('<', '\<', $logs);
 
                 $this->io->writeError('    '.$message);
                 $this->io->writeError($logs);

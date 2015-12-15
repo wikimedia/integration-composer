@@ -13,6 +13,7 @@
 namespace Composer\Test\Util;
 
 use Composer\Util\RemoteFilesystem;
+use Installer\Exception;
 
 class RemoteFilesystemTest extends \PHPUnit_Framework_TestCase
 {
@@ -136,9 +137,6 @@ class RemoteFilesystemTest extends \PHPUnit_Framework_TestCase
         $this->assertNull($this->callCallbackGet($fs, STREAM_NOTIFY_FAILURE, 0, 'HTTP/1.1 404 Not Found', 404, 0, 0));
     }
 
-    /**
-     * @group slow
-     */
     public function testCaptureAuthenticationParamsFromUrl()
     {
         $io = $this->getMock('Composer\IO\IOInterface');

@@ -36,7 +36,7 @@
         }
     }],
     "require": {
-        "php": ">=5.3.2"
+        "php": ">=5.3.0"
     },
     "require-dev": {
         "json-schema/JSON-Schema-Test-Suite": "1.1.0",
@@ -44,10 +44,7 @@
         "phpdocumentor/phpdocumentor": "~2"
     },
     "autoload": {
-        "psr-4": { "JsonSchema\\": "src/JsonSchema/" }
-    },
-    "autoload-dev": {
-        "psr-4": { "JsonSchema\\Tests\\": "tests/JsonSchema/Tests/" }
+        "psr-0": { "JsonSchema": "src/" }
     },
     "bin": ["bin/validate-json"],
     "extra": {

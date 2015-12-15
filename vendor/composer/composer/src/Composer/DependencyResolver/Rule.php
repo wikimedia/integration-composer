@@ -29,18 +29,21 @@ class Rule
     const RULE_LEARNED = 12;
     const RULE_PACKAGE_ALIAS = 13;
 
-    const BITFIELD_TYPE = 0;
-    const BITFIELD_REASON = 8;
-    const BITFIELD_DISABLED = 16;
-
     /**
      * READ-ONLY: The literals this rule consists of.
      * @var array
      */
     public $literals;
 
-    protected $bitfield;
+    protected $disabled;
+    protected $type;
+    protected $id;
+    protected $reason;
     protected $reasonData;
+
+    protected $job;
+
+    protected $ruleHash;
 
     public function __construct(array $literals, $reason, $reasonData, $job = null)
     {
@@ -48,32 +51,41 @@ class Rule
         sort($literals);
 
         $this->literals = $literals;
+        $this->reason = $reason;
         $this->reasonData = $reasonData;
 
-        if ($job) {
-            $this->job = $job;
-        }
+        $this->disabled = false;
 
-        $this->bitfield = (0 << self::BITFIELD_DISABLED) |
-            ($reason << self::BITFIELD_REASON) |
-            (255 << self::BITFIELD_TYPE);
+        $this->job = $job;
+
+        $this->type = -1;
+
+        $this->ruleHash = substr(md5(implode(',', $this->literals)), 0, 5);
     }
 
     public function getHash()
     {
-        $data = unpack('ihash', md5(implode(',', $this->literals), true));
+        return $this->ruleHash;
+    }
 
-        return $data['hash'];
+    public function setId($id)
+    {
+        $this->id = $id;
+    }
+
+    public function getId()
+    {
+        return $this->id;
     }
 
     public function getJob()
     {
-        return isset($this->job) ? $this->job : null;
+        return $this->job;
     }
 
     public function getReason()
     {
-        return ($this->bitfield & (255 << self::BITFIELD_REASON)) >> self::BITFIELD_REASON;
+        return $this->reason;
     }
 
     public function getReasonData()
@@ -83,11 +95,11 @@ class Rule
 
     public function getRequiredPackage()
     {
-        if ($this->getReason() === self::RULE_JOB_INSTALL) {
+        if ($this->reason === self::RULE_JOB_INSTALL) {
             return $this->reasonData;
         }
 
-        if ($this->getReason() === self::RULE_PACKAGE_REQUIRES) {
+        if ($this->reason === self::RULE_PACKAGE_REQUIRES) {
             return $this->reasonData->getTarget();
         }
     }
@@ -102,6 +114,10 @@ class Rule
      */
     public function equals(Rule $rule)
     {
+        if ($this->ruleHash !== $rule->ruleHash) {
+            return false;
+        }
+
         if (count($this->literals) != count($rule->literals)) {
             return false;
         }
@@ -117,32 +133,32 @@ class Rule
 
     public function setType($type)
     {
-        $this->bitfield = ($this->bitfield & ~(255 << self::BITFIELD_TYPE)) | ((255 & $type) << self::BITFIELD_TYPE);
+        $this->type = $type;
     }
 
     public function getType()
     {
-        return ($this->bitfield & (255 << self::BITFIELD_TYPE)) >> self::BITFIELD_TYPE;
+        return $this->type;
     }
 
     public function disable()
     {
-        $this->bitfield = ($this->bitfield & ~(255 << self::BITFIELD_DISABLED)) | (1 << self::BITFIELD_DISABLED);
+        $this->disabled = true;
     }
 
     public function enable()
     {
-        $this->bitfield = $this->bitfield & ~(255 << self::BITFIELD_DISABLED);
+        $this->disabled = false;
     }
 
     public function isDisabled()
     {
-        return (bool) (($this->bitfield & (255 << self::BITFIELD_DISABLED)) >> self::BITFIELD_DISABLED);
+        return $this->disabled;
     }
 
     public function isEnabled()
     {
-        return !(($this->bitfield & (255 << self::BITFIELD_DISABLED)) >> self::BITFIELD_DISABLED);
+        return !$this->disabled;
     }
 
     /**
@@ -168,7 +184,7 @@ class Rule
             $ruleText .= $pool->literalToPrettyString($literal, $installedMap);
         }
 
-        switch ($this->getReason()) {
+        switch ($this->reason) {
             case self::RULE_INTERNAL_ALLOW_UPDATE:
                 return $ruleText;
 
@@ -200,17 +216,16 @@ class Rule
                 } else {
                     $targetName = $this->reasonData->getTarget();
 
+                    // handle php extensions
                     if ($targetName === 'php' || $targetName === 'php-64bit' || $targetName === 'hhvm') {
-                        // handle php/hhvm
                         if (defined('HHVM_VERSION')) {
                             $text .= ' -> your HHVM version does not satisfy that requirement.';
                         } elseif ($targetName === 'hhvm') {
                             $text .= ' -> you are running this with PHP and not HHVM.';
                         } else {
-                            $text .= ' -> your PHP version ('. phpversion() .') or "config.platform.php" value does not satisfy that requirement.';
+                            $text .= ' -> your PHP version does not satisfy that requirement.';
                         }
                     } elseif (0 === strpos($targetName, 'ext-')) {
-                        // handle php extensions
                         $ext = substr($targetName, 4);
                         $error = extension_loaded($ext) ? 'has the wrong version ('.(phpversion($ext) ?: '0').') installed' : 'is missing from your system';
 
