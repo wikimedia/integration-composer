@@ -21,7 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @author Jordi Boggiano <j.boggiano@seld.be>
  */
-class GlobalCommand extends Command
+class GlobalCommand extends BaseCommand
 {
     protected function configure()
     {
@@ -76,6 +76,7 @@ EOT
 
         // create new input without "global" command prefix
         $input = new StringInput(preg_replace('{\bg(?:l(?:o(?:b(?:a(?:l)?)?)?)?)?\b}', '', $input->__toString(), 1));
+        $this->getApplication()->resetComposer();
 
         return $this->getApplication()->run($input, $output);
     }
