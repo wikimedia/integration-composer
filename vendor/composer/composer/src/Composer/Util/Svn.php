@@ -54,7 +54,7 @@ class Svn
     protected $process;
 
     /**
-     * @var int
+     * @var integer
      */
     protected $qtyAuthTries = 0;
 
@@ -94,14 +94,12 @@ class Svn
      * @param string $path    Target for a checkout
      * @param bool   $verbose Output all output to the user
      *
-     * @throws \RuntimeException
      * @return string
+     *
+     * @throws \RuntimeException
      */
     public function execute($command, $url, $cwd = null, $path = null, $verbose = false)
     {
-        // Ensure we are allowed to use this URL by config
-        $this->config->prohibitUrlByConfig($url, $this->io);
-
         $svnCommand = $this->getCommand($command, $url, $path);
         $output = null;
         $io = $this->io;
@@ -122,15 +120,16 @@ class Svn
             return $output;
         }
 
-        $errorOutput = $this->process->getErrorOutput();
-        $fullOutput = implode("\n", array($output, $errorOutput));
+        if (empty($output)) {
+            $output = $this->process->getErrorOutput();
+        }
 
         // the error is not auth-related
-        if (false === stripos($fullOutput, 'Could not authenticate to server:')
-            && false === stripos($fullOutput, 'authorization failed')
-            && false === stripos($fullOutput, 'svn: E170001:')
-            && false === stripos($fullOutput, 'svn: E215004:')) {
-            throw new \RuntimeException($fullOutput);
+        if (false === stripos($output, 'Could not authenticate to server:')
+            && false === stripos($output, 'authorization failed')
+            && false === stripos($output, 'svn: E170001:')
+            && false === stripos($output, 'svn: E215004:')) {
+            throw new \RuntimeException($output);
         }
 
         if (!$this->hasAuth()) {
@@ -144,12 +143,12 @@ class Svn
         }
 
         throw new \RuntimeException(
-            'wrong credentials provided ('.$fullOutput.')'
+            'wrong credentials provided ('.$output.')'
         );
     }
 
     /**
-     * @param bool $cacheCredentials
+     * @param boolean $cacheCredentials
      */
     public function setCacheCredentials($cacheCredentials)
     {
@@ -159,8 +158,8 @@ class Svn
     /**
      * Repositories requests credentials, let's put them in.
      *
-     * @throws \RuntimeException
      * @return \Composer\Util\Svn
+     * @throws \RuntimeException
      */
     protected function doAuthDance()
     {
@@ -231,8 +230,8 @@ class Svn
     /**
      * Get the password for the svn command. Can be empty.
      *
-     * @throws \LogicException
      * @return string
+     * @throws \LogicException
      */
     protected function getPassword()
     {
@@ -246,8 +245,8 @@ class Svn
     /**
      * Get the username for the svn command.
      *
-     * @throws \LogicException
      * @return string
+     * @throws \LogicException
      */
     protected function getUsername()
     {

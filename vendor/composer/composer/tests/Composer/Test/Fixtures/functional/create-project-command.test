@@ -7,7 +7,7 @@ Installing seld/jsonlint (1.0.0)
 
 Created project in %testDir%
 Loading composer repositories with package information
-Updating dependencies (including require-dev)
+Installing dependencies (including require-dev)
 Nothing to install or update
 Writing lock file
 Generating autoload files

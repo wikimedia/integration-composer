@@ -32,13 +32,8 @@ class FileGetContents extends AbstractRetriever
                 'method' => 'GET',
                 'header' => "Accept: " . Validator::SCHEMA_MEDIA_TYPE
             )));
-
-        set_error_handler(function() use ($uri) {
-            throw new ResourceNotFoundException('JSON schema not found at ' . $uri);
-        });
+        
         $response = file_get_contents($uri);
-        restore_error_handler();
-
         if (false === $response) {
             throw new ResourceNotFoundException('JSON schema not found at ' . $uri);
         }

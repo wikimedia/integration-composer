@@ -9,7 +9,6 @@
 
 namespace JsonSchema;
 
-use JsonSchema\Exception\JsonDecodingException;
 use JsonSchema\Uri\Retrievers\UriRetrieverInterface;
 use JsonSchema\Uri\UriRetriever;
 
@@ -40,11 +39,6 @@ class RefResolver
      * @var UriRetrieverInterface
      */
     protected $uriRetriever = null;
-
-    /**
-     * @var object
-     */
-    protected $rootSchema = null;
 
     /**
      * @param UriRetriever $retriever
@@ -102,8 +96,7 @@ class RefResolver
     public function resolve($schema, $sourceUri = null)
     {
         if (self::$depth > self::$maxDepth) {
-            self::$depth = 0;
-            throw new JsonDecodingException(JSON_ERROR_DEPTH);
+            return;
         }
         ++self::$depth;
 
@@ -114,10 +107,6 @@ class RefResolver
 
         if (null === $sourceUri && ! empty($schema->id)) {
             $sourceUri = $schema->id;
-        }
-
-        if (null === $this->rootSchema) {
-            $this->rootSchema = $schema;
         }
 
         // Resolve $ref first
@@ -215,30 +204,7 @@ class RefResolver
             return;
         }
 
-        $splitRef = explode('#', $schema->$ref, 2);
-
-        $refDoc = $splitRef[0];
-        $refPath = null;
-        if (count($splitRef) === 2) {
-            $refPath = explode('/', $splitRef[1]);
-            array_shift($refPath);
-        }
-
-        if (empty($refDoc) && empty($refPath)) {
-            // TODO: Not yet implemented - root pointer ref, causes recursion issues
-            return;
-        }
-
-        if (!empty($refDoc)) {
-            $refSchema = $this->fetchRef($refDoc, $sourceUri);
-        } else {
-            $refSchema = $this->rootSchema;
-        }
-
-        if (null !== $refPath) {
-            $refSchema = $this->resolveRefSegment($refSchema, $refPath);
-        }
-
+        $refSchema = $this->fetchRef($schema->$ref, $sourceUri);
         unset($schema->$ref);
 
         // Augment the current $schema object with properties fetched
@@ -258,20 +224,5 @@ class RefResolver
         $this->uriRetriever = $retriever;
 
         return $this;
-    }
-
-    protected function resolveRefSegment($data, $pathParts)
-    {
-        foreach ($pathParts as $path) {
-            $path = strtr($path, array('~1' => '/', '~0' => '~', '%25' => '%'));
-
-            if (is_array($data)) {
-                $data = $data[$path];
-            } else {
-                $data = $data->{$path};
-            }
-        }
-
-        return $data;
     }
 }

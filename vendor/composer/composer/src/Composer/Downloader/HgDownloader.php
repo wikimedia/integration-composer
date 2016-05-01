@@ -25,9 +25,6 @@ class HgDownloader extends VcsDownloader
      */
     public function doDownload(PackageInterface $package, $path, $url)
     {
-        // Ensure we are allowed to use this URL by config
-        $this->config->prohibitUrlByConfig($url, $this->io);
-
         $url = ProcessExecutor::escape($url);
         $ref = ProcessExecutor::escape($package->getSourceReference());
         $this->io->writeError("    Cloning ".$package->getSourceReference());
@@ -46,15 +43,12 @@ class HgDownloader extends VcsDownloader
      */
     public function doUpdate(PackageInterface $initial, PackageInterface $target, $path, $url)
     {
-        // Ensure we are allowed to use this URL by config
-        $this->config->prohibitUrlByConfig($url, $this->io);
-
         $url = ProcessExecutor::escape($url);
         $ref = ProcessExecutor::escape($target->getSourceReference());
         $this->io->writeError("    Updating to ".$target->getSourceReference());
 
-        if (!$this->hasMetadataRepository($path)) {
-            throw new \RuntimeException('The .hg directory is missing from '.$path.', see https://getcomposer.org/commit-deps for more information');
+        if (!is_dir($path.'/.hg')) {
+            throw new \RuntimeException('The .hg directory is missing from '.$path.', see http://getcomposer.org/commit-deps for more information');
         }
 
         $command = sprintf('hg pull %s && hg up %s', $url, $ref);
@@ -69,7 +63,7 @@ class HgDownloader extends VcsDownloader
     public function getLocalChanges(PackageInterface $package, $path)
     {
         if (!is_dir($path.'/.hg')) {
-            return null;
+            return;
         }
 
         $this->process->execute('hg st', $output, realpath($path));
@@ -89,13 +83,5 @@ class HgDownloader extends VcsDownloader
         }
 
         return $output;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function hasMetadataRepository($path)
-    {
-        return is_dir($path . '/.hg');
     }
 }

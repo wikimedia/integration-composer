@@ -13,6 +13,7 @@
 namespace Composer\Installer;
 
 use Composer\Composer;
+use Composer\Package\Package;
 use Composer\IO\IOInterface;
 use Composer\Repository\InstalledRepositoryInterface;
 use Composer\Package\PackageInterface;
@@ -26,6 +27,7 @@ use Composer\Package\PackageInterface;
 class PluginInstaller extends LibraryInstaller
 {
     private $installationManager;
+    private static $classCounter = 0;
 
     /**
      * Initializes Plugin installer.
@@ -59,14 +61,7 @@ class PluginInstaller extends LibraryInstaller
         }
 
         parent::install($repo, $package);
-        try {
-            $this->composer->getPluginManager()->registerPackage($package, true);
-        } catch (\Exception $e) {
-            // Rollback installation
-            $this->io->writeError('Plugin installation failed, rolling back');
-            parent::uninstall($repo, $package);
-            throw $e;
-        }
+        $this->composer->getPluginManager()->registerPackage($package, true);
     }
 
     /**

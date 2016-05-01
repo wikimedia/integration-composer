@@ -15,12 +15,8 @@ namespace Composer\Downloader;
 use Composer\Config;
 use Composer\Cache;
 use Composer\EventDispatcher\EventDispatcher;
-use Composer\Package\PackageInterface;
-use Composer\Util\Platform;
 use Composer\Util\ProcessExecutor;
-use Composer\Util\RemoteFilesystem;
 use Composer\IO\IOInterface;
-use Symfony\Component\Process\ExecutableFinder;
 use ZipArchive;
 
 /**
@@ -29,52 +25,20 @@ use ZipArchive;
 class ZipDownloader extends ArchiveDownloader
 {
     protected $process;
-    protected static $hasSystemUnzip;
 
-    public function __construct(IOInterface $io, Config $config, EventDispatcher $eventDispatcher = null, Cache $cache = null, ProcessExecutor $process = null, RemoteFilesystem $rfs = null)
+    public function __construct(IOInterface $io, Config $config, EventDispatcher $eventDispatcher = null, Cache $cache = null, ProcessExecutor $process = null)
     {
         $this->process = $process ?: new ProcessExecutor($io);
-        parent::__construct($io, $config, $eventDispatcher, $cache, $rfs);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function download(PackageInterface $package, $path)
-    {
-        if (null === self::$hasSystemUnzip) {
-            $finder = new ExecutableFinder;
-            self::$hasSystemUnzip = (bool) $finder->find('unzip');
-        }
-
-        if (!class_exists('ZipArchive') && !self::$hasSystemUnzip) {
-            // php.ini path is added to the error message to help users find the correct file
-            $iniPath = php_ini_loaded_file();
-
-            if ($iniPath) {
-                $iniMessage = 'The php.ini used by your command-line PHP is: ' . $iniPath;
-            } else {
-                $iniMessage = 'A php.ini file does not exist. You will have to create one.';
-            }
-
-            $error = "The zip extension and unzip command are both missing, skipping.\n" . $iniMessage;
-
-            throw new \RuntimeException($error);
-        }
-
-        return parent::download($package, $path);
+        parent::__construct($io, $config, $eventDispatcher, $cache);
     }
 
     protected function extract($file, $path)
     {
         $processError = null;
 
-        if (self::$hasSystemUnzip && !(class_exists('ZipArchive') && Platform::isWindows())) {
-            $command = 'unzip '.ProcessExecutor::escape($file).' -d '.ProcessExecutor::escape($path);
-            if (!Platform::isWindows()) {
-                $command .= ' && chmod -R u+w ' . ProcessExecutor::escape($path);
-            }
-
+        // try to use unzip on *nix
+        if (!defined('PHP_WINDOWS_VERSION_BUILD')) {
+            $command = 'unzip '.ProcessExecutor::escape($file).' -d '.ProcessExecutor::escape($path) . ' && chmod -R u+w ' . ProcessExecutor::escape($path);
             try {
                 if (0 === $this->process->execute($command, $ignoredOutput)) {
                     return;
@@ -84,20 +48,36 @@ class ZipDownloader extends ArchiveDownloader
             } catch (\Exception $e) {
                 $processError = 'Failed to execute ' . $command . "\n\n" . $e->getMessage();
             }
+        }
 
-            if (!class_exists('ZipArchive')) {
-                throw new \RuntimeException($processError);
+        if (!class_exists('ZipArchive')) {
+            // php.ini path is added to the error message to help users find the correct file
+            $iniPath = php_ini_loaded_file();
+
+            if ($iniPath) {
+                $iniMessage = 'The php.ini used by your command-line PHP is: ' . $iniPath;
+            } else {
+                $iniMessage = 'A php.ini file does not exist. You will have to create one.';
             }
+
+            $error = "Could not decompress the archive, enable the PHP zip extension or install unzip.\n"
+                . $iniMessage . "\n" . $processError;
+
+            if (!defined('PHP_WINDOWS_VERSION_BUILD')) {
+                $error = "Could not decompress the archive, enable the PHP zip extension.\n" . $iniMessage;
+            }
+
+            throw new \RuntimeException($error);
         }
 
         $zipArchive = new ZipArchive();
 
         if (true !== ($retval = $zipArchive->open($file))) {
-            throw new \UnexpectedValueException(rtrim($this->getErrorMessage($retval, $file)."\n".$processError), $retval);
+            throw new \UnexpectedValueException($this->getErrorMessage($retval, $file), $retval);
         }
 
         if (true !== $zipArchive->extractTo($path)) {
-            throw new \RuntimeException(rtrim("There was an error extracting the ZIP file, it is either corrupted or using an invalid format.\n".$processError));
+            throw new \RuntimeException("There was an error extracting the ZIP file. Corrupt file?");
         }
 
         $zipArchive->close();
