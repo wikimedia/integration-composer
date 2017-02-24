@@ -50,6 +50,9 @@ class EventDispatcherTest extends TestCase
         $dispatcher->dispatchScript(ScriptEvents::POST_INSTALL_CMD, false);
     }
 
+    /**
+     * @expectedException PHPUnit_Framework_Error_Deprecated
+     */
     public function testDispatcherCanConvertScriptEventToCommandEventForListener()
     {
         $io = $this->getMock('Composer\IO\IOInterface');

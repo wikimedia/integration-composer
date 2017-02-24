@@ -55,6 +55,8 @@ class Application extends BaseApplication
                     /_/
 ';
 
+    private $hasPluginCommands = false;
+
     public function __construct()
     {
         static $shutdownRegistered = false;
@@ -107,7 +109,14 @@ class Application extends BaseApplication
         $io = $this->io = new ConsoleIO($input, $output, $this->getHelperSet());
         ErrorHandler::register($io);
 
-        // determine command name to be executed
+        // switch working dir
+        if ($newWorkDir = $this->getNewWorkingDir($input)) {
+            $oldWorkingDir = getcwd();
+            chdir($newWorkDir);
+            $io->writeError('Changed CWD to ' . getcwd(), true, IOInterface::DEBUG);
+        }
+
+        // determine command name to be executed without including plugin commands
         $commandName = '';
         if ($name = $this->getCommandName($input)) {
             try {
@@ -116,7 +125,29 @@ class Application extends BaseApplication
             }
         }
 
-        if ($commandName !== 'global') {
+        if (!$input->hasParameterOption('--no-plugins') && !$this->hasPluginCommands && 'global' !== $commandName) {
+            foreach ($this->getPluginCommands() as $command) {
+                if ($this->has($command->getName())) {
+                    $io->writeError('<warning>Plugin command '.$command->getName().' ('.get_class($command).') would override a Composer command and has been skipped</warning>');
+                } else {
+                    $this->add($command);
+                }
+            }
+            $this->hasPluginCommands = true;
+        }
+
+        // determine command name to be executed incl plugin commands, and check if it's a proxy command
+        $isProxyCommand = false;
+        if ($name = $this->getCommandName($input)) {
+            try {
+                $command = $this->find($name);
+                $commandName = $command->getName();
+                $isProxyCommand = ($command instanceof Command\BaseCommand && $command->isProxyCommand());
+            } catch (\InvalidArgumentException $e) {
+            }
+        }
+
+        if (!$isProxyCommand) {
             $io->writeError(sprintf(
                 'Running %s (%s) with %s on %s',
                 Composer::VERSION,
@@ -156,12 +187,13 @@ class Application extends BaseApplication
                 Silencer::call('exec', 'sudo -K > /dev/null 2>&1');
             }
 
-            // switch working dir
-            if ($newWorkDir = $this->getNewWorkingDir($input)) {
-                $oldWorkingDir = getcwd();
-                chdir($newWorkDir);
-                $io->writeError('Changed CWD to ' . getcwd(), true, IOInterface::DEBUG);
-            }
+            // Check system temp folder for usability as it can cause weird runtime issues otherwise
+            Silencer::call(function() {
+                $tempfile = sys_get_temp_dir() . '/temp-' . md5(microtime());
+                if (!(file_put_contents($tempfile, __FILE__) && (file_get_contents($tempfile) == __FILE__) && unlink($tempfile) && !file_exists($tempfile))) {
+                    $io->writeError(sprintf('<error>PHP temp directory (%s) does not exist or is not writable to Composer. Set sys_temp_dir in your php.ini</error>', sys_get_temp_dir()));
+                }
+            });
 
             // add non-standard scripts as own commands
             $file = Factory::getComposerFile();
@@ -170,7 +202,7 @@ class Application extends BaseApplication
                     foreach ($composer['scripts'] as $script => $dummy) {
                         if (!defined('Composer\Script\ScriptEvents::'.str_replace('-', '_', strtoupper($script)))) {
                             if ($this->has($script)) {
-                                $io->writeError('<warning>A script named '.$script.' would override a native Composer function and has been skipped</warning>');
+                                $io->writeError('<warning>A script named '.$script.' would override a Composer command and has been skipped</warning>');
                             } else {
                                 $this->add(new Command\ScriptAliasCommand($script));
                             }
@@ -331,6 +363,7 @@ class Application extends BaseApplication
             new Command\RemoveCommand(),
             new Command\HomeCommand(),
             new Command\ExecCommand(),
+            new Command\OutdatedCommand(),
         ));
 
         if ('phar:' === substr(__FILE__, 0, 5)) {
@@ -365,8 +398,37 @@ class Application extends BaseApplication
     {
         $definition = parent::getDefaultInputDefinition();
         $definition->addOption(new InputOption('--profile', null, InputOption::VALUE_NONE, 'Display timing and memory usage information'));
+        $definition->addOption(new InputOption('--no-plugins', null, InputOption::VALUE_NONE, 'Whether to disable plugins.'));
         $definition->addOption(new InputOption('--working-dir', '-d', InputOption::VALUE_REQUIRED, 'If specified, use the given directory as working directory.'));
 
         return $definition;
+    }
+
+    private function getPluginCommands()
+    {
+        $commands = array();
+
+        $composer = $this->getComposer(false, false);
+        if (null === $composer) {
+            $composer = Factory::createGlobal($this->io, false);
+        }
+
+        if (null !== $composer) {
+            $pm = $composer->getPluginManager();
+            foreach ($pm->getPluginCapabilities('Composer\Plugin\Capability\CommandProvider', array('composer' => $composer, 'io' => $this->io)) as $capability) {
+                $newCommands = $capability->getCommands();
+                if (!is_array($newCommands)) {
+                    throw new \UnexpectedValueException('Plugin capability '.get_class($capability).' failed to return an array from getCommands');
+                }
+                foreach ($newCommands as $command) {
+                    if (!$command instanceof Command\BaseCommand) {
+                        throw new \UnexpectedValueException('Plugin capability '.get_class($capability).' returned an invalid value, we expected an array of Composer\Command\BaseCommand objects');
+                    }
+                }
+                $commands = array_merge($commands, $newCommands);
+            }
+        }
+
+        return $commands;
     }
 }

@@ -362,6 +362,7 @@ class PluginManager
                 throw new \RuntimeException("Cannot instantiate Capability, as class $capabilityClass from plugin ".get_class($plugin)." does not exist.");
             }
 
+            $ctorArgs['plugin'] = $plugin;
             $capabilityObj = new $capabilityClass($ctorArgs);
 
             // FIXME these could use is_a and do the check *before* instantiating once drop support for php<5.3.9
@@ -373,5 +374,24 @@ class PluginManager
 
             return $capabilityObj;
         }
+    }
+
+    /**
+     * @param  string          $capabilityClassName The fully qualified name of the API interface which the plugin may provide
+     *                                              an implementation of.
+     * @param  array           $ctorArgs            Arguments passed to Capability's constructor.
+     *                                              Keeping it an array will allow future values to be passed w\o changing the signature.
+     * @return Capability[]
+     */
+    public function getPluginCapabilities($capabilityClassName, array $ctorArgs = array())
+    {
+        $capabilities = array();
+        foreach ($this->getPlugins() as $plugin) {
+            if ($capability = $this->getPluginCapability($plugin, $capabilityClassName, $ctorArgs)) {
+                $capabilities[] = $capability;
+            }
+        }
+
+        return $capabilities;
     }
 }
