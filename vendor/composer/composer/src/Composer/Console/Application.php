@@ -27,6 +27,7 @@ use Composer\IO\IOInterface;
 use Composer\IO\ConsoleIO;
 use Composer\Json\JsonValidationException;
 use Composer\Util\ErrorHandler;
+use Composer\Exception\NoSslException;
 
 /**
  * The console application that handles the commands
@@ -126,13 +127,18 @@ class Application extends BaseApplication
         }
 
         if (!$input->hasParameterOption('--no-plugins') && !$this->hasPluginCommands && 'global' !== $commandName) {
-            foreach ($this->getPluginCommands() as $command) {
-                if ($this->has($command->getName())) {
-                    $io->writeError('<warning>Plugin command '.$command->getName().' ('.get_class($command).') would override a Composer command and has been skipped</warning>');
-                } else {
-                    $this->add($command);
+            try {
+                foreach ($this->getPluginCommands() as $command) {
+                    if ($this->has($command->getName())) {
+                        $io->writeError('<warning>Plugin command '.$command->getName().' ('.get_class($command).') would override a Composer command and has been skipped</warning>');
+                    } else {
+                        $this->add($command);
+                    }
                 }
+            } catch (NoSslException $e) {
+                // suppress these as they are not relevant at this point
             }
+
             $this->hasPluginCommands = true;
         }
 
@@ -188,7 +194,7 @@ class Application extends BaseApplication
             }
 
             // Check system temp folder for usability as it can cause weird runtime issues otherwise
-            Silencer::call(function() {
+            Silencer::call(function () use ($io) {
                 $tempfile = sys_get_temp_dir() . '/temp-' . md5(microtime());
                 if (!(file_put_contents($tempfile, __FILE__) && (file_get_contents($tempfile) == __FILE__) && unlink($tempfile) && !file_exists($tempfile))) {
                     $io->writeError(sprintf('<error>PHP temp directory (%s) does not exist or is not writable to Composer. Set sys_temp_dir in your php.ini</error>', sys_get_temp_dir()));
@@ -228,9 +234,12 @@ class Application extends BaseApplication
                 $io->writeError('<info>Memory usage: '.round(memory_get_usage() / 1024 / 1024, 2).'MB (peak: '.round(memory_get_peak_usage() / 1024 / 1024, 2).'MB), time: '.round(microtime(true) - $startTime, 2).'s');
             }
 
+            restore_error_handler();
+
             return $result;
         } catch (\Exception $e) {
             $this->hintCommonErrors($e);
+            restore_error_handler();
             throw $e;
         }
     }
