@@ -11,7 +11,6 @@
 
 namespace Symfony\Component\Console\Tests\Helper;
 
-use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Helper\DialogHelper;
 use Symfony\Component\Console\Helper\HelperSet;
@@ -23,7 +22,7 @@ use Symfony\Component\Console\Exception\InvalidArgumentException;
 /**
  * @group legacy
  */
-class LegacyDialogHelperTest extends TestCase
+class LegacyDialogHelperTest extends \PHPUnit_Framework_TestCase
 {
     public function testSelect()
     {
@@ -254,6 +253,6 @@ class LegacyDialogHelperTest extends TestCase
     {
         exec('stty 2>&1', $output, $exitcode);
 
-        return 0 === $exitcode;
+        return $exitcode === 0;
     }
 }

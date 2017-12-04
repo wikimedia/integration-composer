@@ -204,18 +204,12 @@ class FilesystemTest extends TestCase
             array('../foo', '../foo'),
             array('c:/foo/bar', 'c:/foo//bar'),
             array('C:/foo/bar', 'C:/foo/./bar'),
-            array('C:/foo/bar', 'C://foo//bar'),
-            array('C:/foo/bar', 'C:///foo//bar'),
             array('C:/bar', 'C:/foo/../bar'),
             array('/bar', '/foo/../bar/'),
             array('phar://c:/Foo', 'phar://c:/Foo/Bar/..'),
-            array('phar://c:/Foo', 'phar://c:///Foo/Bar/..'),
             array('phar://c:/', 'phar://c:/Foo/Bar/../../../..'),
             array('/', '/Foo/Bar/../../../..'),
             array('/', '/'),
-            array('/', '//'),
-            array('/', '///'),
-            array('/Foo', '///Foo'),
             array('c:/', 'c:\\'),
             array('../src', 'Foo/Bar/../../../src'),
             array('c:../b', 'c:.\\..\\a\\..\\b'),
@@ -229,7 +223,7 @@ class FilesystemTest extends TestCase
      */
     public function testUnlinkSymlinkedDirectory()
     {
-        $basepath = $this->workingDir;
+        $basepath  = $this->workingDir;
         $symlinked = $basepath . "/linked";
         @mkdir($basepath . "/real", 0777, true);
         touch($basepath . "/real/FILE");
@@ -244,7 +238,7 @@ class FilesystemTest extends TestCase
             $this->fail('Precondition assertion failed (is_dir is false on symbolic link to directory).');
         }
 
-        $fs = new Filesystem();
+        $fs     = new Filesystem();
         $result = $fs->unlink($symlinked);
         $this->assertTrue($result);
         $this->assertFalse(file_exists($symlinked));
@@ -258,7 +252,7 @@ class FilesystemTest extends TestCase
     {
         @mkdir($this->workingDir . "/real", 0777, true);
         touch($this->workingDir . "/real/FILE");
-        $symlinked = $this->workingDir . "/linked";
+        $symlinked              = $this->workingDir . "/linked";
         $symlinkedTrailingSlash = $symlinked . "/";
 
         $result = @symlink($this->workingDir . "/real", $symlinked);

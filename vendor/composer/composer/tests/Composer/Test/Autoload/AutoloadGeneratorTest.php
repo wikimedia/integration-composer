@@ -508,10 +508,9 @@ class AutoloadGeneratorTest extends TestCase
         );
         $this->assertAutoloadFiles('classmap5', $this->vendorDir.'/composer', 'classmap');
         $this->assertNotContains('$loader->setClassMapAuthoritative(true);', file_get_contents($this->vendorDir.'/composer/autoload_real.php'));
-        $this->assertNotContains('$loader->setApcuPrefix(', file_get_contents($this->vendorDir.'/composer/autoload_real.php'));
     }
 
-    public function testClassMapAutoloadingAuthoritativeAndApcu()
+    public function testClassMapAutoloadingAuthoritative()
     {
         $package = new Package('a', '1.0', '1.0');
 
@@ -536,7 +535,6 @@ class AutoloadGeneratorTest extends TestCase
         file_put_contents($this->vendorDir.'/c/c/foo/ClassMapBaz.php', '<?php class ClassMapBaz {}');
 
         $this->generator->setClassMapAuthoritative(true);
-        $this->generator->setApcu(true);
         $this->generator->dump($this->config, $this->repository, $package, $this->im, 'composer', false, '_7');
 
         $this->assertTrue(file_exists($this->vendorDir.'/composer/autoload_classmap.php'), "ClassMap file needs to be generated.");
@@ -551,7 +549,6 @@ class AutoloadGeneratorTest extends TestCase
         $this->assertAutoloadFiles('classmap8', $this->vendorDir.'/composer', 'classmap');
 
         $this->assertContains('$loader->setClassMapAuthoritative(true);', file_get_contents($this->vendorDir.'/composer/autoload_real.php'));
-        $this->assertContains('$loader->setApcuPrefix(', file_get_contents($this->vendorDir.'/composer/autoload_real.php'));
     }
 
     public function testFilesAutoloadGeneration()

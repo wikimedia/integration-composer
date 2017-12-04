@@ -18,6 +18,8 @@ use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Composer\Command;
 use Composer\Composer;
 use Composer\Factory;
@@ -25,7 +27,6 @@ use Composer\IO\IOInterface;
 use Composer\IO\ConsoleIO;
 use Composer\Json\JsonValidationException;
 use Composer\Util\ErrorHandler;
-use Composer\EventDispatcher\ScriptExecutionException;
 use Composer\Exception\NoSslException;
 
 /**
@@ -56,7 +57,6 @@ class Application extends BaseApplication
 ';
 
     private $hasPluginCommands = false;
-    private $disablePluginsByDefault = false;
 
     public function __construct()
     {
@@ -94,7 +94,9 @@ class Application extends BaseApplication
     public function run(InputInterface $input = null, OutputInterface $output = null)
     {
         if (null === $output) {
-            $output = Factory::createOutput();
+            $styles = Factory::createAdditionalStyles();
+            $formatter = new OutputFormatter(null, $styles);
+            $output = new ConsoleOutput(ConsoleOutput::VERBOSITY_NORMAL, null, $formatter);
         }
 
         return parent::run($input, $output);
@@ -105,8 +107,6 @@ class Application extends BaseApplication
      */
     public function doRun(InputInterface $input, OutputInterface $output)
     {
-        $this->disablePluginsByDefault = $input->hasParameterOption('--no-plugins');
-
         $io = $this->io = new ConsoleIO($input, $output, $this->getHelperSet());
         ErrorHandler::register($io);
 
@@ -126,7 +126,7 @@ class Application extends BaseApplication
             }
         }
 
-        if (!$this->disablePluginsByDefault && !$this->hasPluginCommands && 'global' !== $commandName) {
+        if (!$input->hasParameterOption('--no-plugins') && !$this->hasPluginCommands && 'global' !== $commandName) {
             try {
                 foreach ($this->getPluginCommands() as $command) {
                     if ($this->has($command->getName())) {
@@ -159,7 +159,7 @@ class Application extends BaseApplication
                 Composer::VERSION,
                 Composer::RELEASE_DATE,
                 defined('HHVM_VERSION') ? 'HHVM '.HHVM_VERSION : 'PHP '.PHP_VERSION,
-                function_exists('php_uname') ? php_uname('s') . ' / ' . php_uname('r') : 'Unknown OS'
+                php_uname('s') . ' / ' . php_uname('r')
             ), true, IOInterface::DEBUG);
 
             if (PHP_VERSION_ID < 50302) {
@@ -181,7 +181,7 @@ class Application extends BaseApplication
             if (!Platform::isWindows() && function_exists('exec') && !getenv('COMPOSER_ALLOW_SUPERUSER')) {
                 if (function_exists('posix_getuid') && posix_getuid() === 0) {
                     if ($commandName !== 'self-update' && $commandName !== 'selfupdate') {
-                        $io->writeError('<warning>Do not run Composer as root/super user! See https://getcomposer.org/root for details</warning>');
+                        $io->writeError('<warning>Running composer as root/super user is highly discouraged as packages, plugins and scripts cannot always be trusted</warning>');
                     }
                     if ($uid = (int) getenv('SUDO_UID')) {
                         // Silently clobber any sudo credentials on the invoking user to avoid privilege escalations later on
@@ -237,8 +237,6 @@ class Application extends BaseApplication
             restore_error_handler();
 
             return $result;
-        } catch (ScriptExecutionException $e) {
-            return $e->getCode();
         } catch (\Exception $e) {
             $this->hintCommonErrors($e);
             restore_error_handler();
@@ -292,23 +290,19 @@ class Application extends BaseApplication
         }
 
         if (false !== strpos($exception->getMessage(), 'fork failed - Cannot allocate memory')) {
-            $io->writeError('<error>The following exception is caused by a lack of memory or swap, or not having swap configured</error>', true, IOInterface::QUIET);
+            $io->writeError('<error>The following exception is caused by a lack of memory and not having swap configured</error>', true, IOInterface::QUIET);
             $io->writeError('<error>Check https://getcomposer.org/doc/articles/troubleshooting.md#proc-open-fork-failed-errors for details</error>', true, IOInterface::QUIET);
         }
     }
 
     /**
      * @param  bool                    $required
-     * @param  bool|null               $disablePlugins
+     * @param  bool                    $disablePlugins
      * @throws JsonValidationException
      * @return \Composer\Composer
      */
-    public function getComposer($required = true, $disablePlugins = null)
+    public function getComposer($required = true, $disablePlugins = false)
     {
-        if (null === $disablePlugins) {
-            $disablePlugins = $this->disablePluginsByDefault;
-        }
-
         if (null === $this->composer) {
             try {
                 $this->composer = Factory::create($this->io, null, $disablePlugins);

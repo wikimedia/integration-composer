@@ -117,13 +117,12 @@ class JsonParser
 
     /**
      * @param  string                $input JSON string
-     * @param  int                   $flags Bitmask of parse/lint options (see constants of this class)
      * @return null|ParsingException null if no error is found, a ParsingException containing all details otherwise
      */
-    public function lint($input, $flags = 0)
+    public function lint($input)
     {
         try {
-            $this->parse($input, $flags);
+            $this->parse($input);
         } catch (ParsingException $e) {
             return $e;
         }
@@ -131,7 +130,6 @@ class JsonParser
 
     /**
      * @param  string           $input JSON string
-     * @param  int              $flags Bitmask of parse/lint options (see constants of this class)
      * @return mixed
      * @throws ParsingException
      */
@@ -172,7 +170,7 @@ class JsonParser
         $errStr = null;
 
         while (true) {
-            // retrieve state number from top of stack
+            // retreive state number from top of stack
             $state = $this->stack[count($this->stack)-1];
 
             // use default actions if available

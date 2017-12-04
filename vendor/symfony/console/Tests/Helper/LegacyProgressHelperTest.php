@@ -11,7 +11,6 @@
 
 namespace Symfony\Component\Console\Tests\Helper;
 
-use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Helper\ProgressHelper;
 use Symfony\Component\Console\Output\StreamOutput;
 
@@ -19,7 +18,7 @@ use Symfony\Component\Console\Output\StreamOutput;
  * @group legacy
  * @group time-sensitive
  */
-class LegacyProgressHelperTest extends TestCase
+class LegacyProgressHelperTest extends \PHPUnit_Framework_TestCase
 {
     public function testAdvance()
     {
@@ -214,7 +213,7 @@ class LegacyProgressHelperTest extends TestCase
     {
         $expectedout = $expected;
 
-        if (null !== $this->lastMessagesLength) {
+        if ($this->lastMessagesLength !== null) {
             $expectedout = str_pad($expected, $this->lastMessagesLength, "\x20", STR_PAD_RIGHT);
         }
 
