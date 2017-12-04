@@ -46,7 +46,6 @@ class Config
         'sort-packages' => false,
         'optimize-autoloader' => false,
         'classmap-authoritative' => false,
-        'apcu-autoloader' => false,
         'prepend-autoloader' => true,
         'github-domains' => array('github.com'),
         'bitbucket-expose-hostname' => true,
@@ -64,12 +63,11 @@ class Config
         // bitbucket-oauth
         // github-oauth
         // gitlab-oauth
-        // gitlab-token
         // http-basic
     );
 
     public static $defaultRepositories = array(
-        'packagist.org' => array(
+        'packagist' => array(
             'type' => 'composer',
             'url' => 'https?://packagist.org',
             'allow_ssl_downgrade' => true,
@@ -79,9 +77,7 @@ class Config
     private $config;
     private $baseDir;
     private $repositories;
-    /** @var ConfigSourceInterface */
     private $configSource;
-    /** @var ConfigSourceInterface */
     private $authConfigSource;
     private $useEnvironment;
     private $warnedHosts = array();
@@ -129,7 +125,7 @@ class Config
         // override defaults with given config
         if (!empty($config['config']) && is_array($config['config'])) {
             foreach ($config['config'] as $key => $val) {
-                if (in_array($key, array('bitbucket-oauth', 'github-oauth', 'gitlab-oauth', 'gitlab-token', 'http-basic')) && isset($this->config[$key])) {
+                if (in_array($key, array('bitbucket-oauth', 'github-oauth', 'gitlab-oauth', 'http-basic')) && isset($this->config[$key])) {
                     $this->config[$key] = array_merge($this->config[$key], $val);
                 } elseif ('preferred-install' === $key && isset($this->config[$key])) {
                     if (is_array($val) || is_array($this->config[$key])) {
@@ -161,13 +157,13 @@ class Config
             foreach ($newRepos as $name => $repository) {
                 // disable a repository by name
                 if (false === $repository) {
-                    $this->disableRepoByName($name);
+                    unset($this->repositories[$name]);
                     continue;
                 }
 
                 // disable a repository with an anonymous {"name": false} repo
                 if (is_array($repository) && 1 === count($repository) && false === current($repository)) {
-                    $this->disableRepoByName(key($repository));
+                    unset($this->repositories[key($repository)]);
                     continue;
                 }
 
@@ -175,11 +171,7 @@ class Config
                 if (is_int($name)) {
                     $this->repositories[] = $repository;
                 } else {
-                    if ($name === 'packagist') { // BC support for default "packagist" named repo
-                        $this->repositories[$name . '.org'] = $repository;
-                    } else {
-                        $this->repositories[$name] = $repository;
-                    }
+                    $this->repositories[$name] = $repository;
                 }
             }
             $this->repositories = array_reverse($this->repositories, true);
@@ -218,8 +210,7 @@ class Config
                 // convert foo-bar to COMPOSER_FOO_BAR and check if it exists since it overrides the local config
                 $env = 'COMPOSER_' . strtoupper(strtr($key, '-', '_'));
 
-                $val = $this->getComposerEnv($env);
-                $val = rtrim((string) $this->process(false !== $val ? $val : $this->config[$key], $flags), '/\\');
+                $val = rtrim($this->process($this->getComposerEnv($env) ?: $this->config[$key], $flags), '/\\');
                 $val = Platform::expandPath($val);
 
                 if (substr($key, -4) !== '-dir') {
@@ -360,9 +351,9 @@ class Config
     /**
      * Replaces {$refs} inside a config string
      *
-     * @param  string|int|null $value a config string that can contain {$refs-to-other-config}
-     * @param  int             $flags Options (see class constants)
-     * @return string|int|null
+     * @param  string $value a config string that can contain {$refs-to-other-config}
+     * @param  int    $flags Options (see class constants)
+     * @return string
      */
     private function process($value, $flags)
     {
@@ -410,15 +401,6 @@ class Config
         }
 
         return false;
-    }
-
-    private function disableRepoByName($name)
-    {
-        if (isset($this->repositories[$name])) {
-            unset($this->repositories[$name]);
-        } elseif ($name === 'packagist') { // BC support for default "packagist" named repo
-            unset($this->repositories['packagist.org']);
-        }
     }
 
     /**

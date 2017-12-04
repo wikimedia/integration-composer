@@ -28,9 +28,7 @@ use Composer\Util\Silencer;
 use Composer\Plugin\PluginEvents;
 use Composer\EventDispatcher\Event;
 use Seld\JsonLint\DuplicateKeyException;
-use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Formatter\OutputFormatterStyle;
-use Symfony\Component\Console\Output\ConsoleOutput;
 use Composer\EventDispatcher\EventDispatcher;
 use Composer\Autoload\AutoloadGenerator;
 use Composer\Package\Version\VersionParser;
@@ -228,19 +226,6 @@ class Factory
     }
 
     /**
-     * Creates a ConsoleOutput instance
-     *
-     * @return ConsoleOutput
-     */
-    public static function createOutput()
-    {
-        $styles = self::createAdditionalStyles();
-        $formatter = new OutputFormatter(null, $styles);
-
-        return new ConsoleOutput(ConsoleOutput::VERBOSITY_NORMAL, null, $formatter);
-    }
-
-    /**
      * @deprecated Use Composer\Repository\RepositoryFactory::defaultRepos instead
      */
     public static function createDefaultRepositories(IOInterface $io = null, Config $config = null, RepositoryManager $rm = null)
@@ -301,9 +286,7 @@ class Factory
         $config->merge($localConfig);
         if (isset($composerFile)) {
             $io->writeError('Loading config file ' . $composerFile, true, IOInterface::DEBUG);
-            $config->setConfigSource(new JsonConfigSource(new JsonFile(realpath($composerFile), null, $io)));
-
-            $localAuthFile = new JsonFile(dirname(realpath($composerFile)) . '/auth.json', null, $io);
+            $localAuthFile = new JsonFile(dirname(realpath($composerFile)) . '/auth.json');
             if ($localAuthFile->exists()) {
                 $io->writeError('Loading config file ' . $localAuthFile->getPath(), true, IOInterface::DEBUG);
                 $config->merge(array('config' => $localAuthFile->read()));
@@ -312,6 +295,7 @@ class Factory
         }
 
         $vendorDir = $config->get('vendor-dir');
+        $binDir = $config->get('bin-dir');
 
         // initialize composer
         $composer = new Composer();
@@ -344,7 +328,7 @@ class Factory
         // load package
         $parser = new VersionParser;
         $guesser = new VersionGuesser($config, new ProcessExecutor($io), $parser);
-        $loader = new Package\Loader\RootPackageLoader($rm, $config, $parser, $guesser);
+        $loader  = new Package\Loader\RootPackageLoader($rm, $config, $parser, $guesser);
         $package = $loader->load($localConfig, 'Composer\Package\RootPackage', $cwd);
         $composer->setPackage($package);
 
@@ -474,7 +458,6 @@ class Factory
 
         $dm->setDownloader('git', new Downloader\GitDownloader($io, $config, $executor, $fs));
         $dm->setDownloader('svn', new Downloader\SvnDownloader($io, $config, $executor, $fs));
-        $dm->setDownloader('fossil', new Downloader\FossilDownloader($io, $config, $executor, $fs));
         $dm->setDownloader('hg', new Downloader\HgDownloader($io, $config, $executor, $fs));
         $dm->setDownloader('perforce', new Downloader\PerforceDownloader($io, $config));
         $dm->setDownloader('zip', new Downloader\ZipDownloader($io, $config, $eventDispatcher, $cache, $executor, $rfs));

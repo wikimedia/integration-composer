@@ -75,7 +75,7 @@ class ClassMapGenerator
 
         $map = array();
         $filesystem = new Filesystem();
-        $cwd = realpath(getcwd());
+        $cwd = getcwd();
 
         foreach ($path as $file) {
             $filePath = $file->getPathname();
