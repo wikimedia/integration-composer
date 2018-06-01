@@ -22,6 +22,7 @@ use Composer\Plugin\PreFileDownloadEvent;
 use Composer\EventDispatcher\EventDispatcher;
 use Composer\Util\Filesystem;
 use Composer\Util\RemoteFilesystem;
+use Composer\Util\Url as UrlUtil;
 
 /**
  * Base downloader for files
@@ -77,25 +78,28 @@ class FileDownloader implements DownloaderInterface
     /**
      * {@inheritDoc}
      */
-    public function download(PackageInterface $package, $path)
+    public function download(PackageInterface $package, $path, $output = true)
     {
         if (!$package->getDistUrl()) {
             throw new \InvalidArgumentException('The given package is missing url information');
         }
 
-        $this->io->writeError("  - Installing <info>" . $package->getName() . "</info> (<comment>" . $package->getFullPrettyVersion() . "</comment>)");
+        if ($output) {
+            $this->io->writeError("  - Installing <info>" . $package->getName() . "</info> (<comment>" . $package->getFullPrettyVersion() . "</comment>): ", false);
+        }
 
         $urls = $package->getDistUrls();
         while ($url = array_shift($urls)) {
             try {
-                return $this->doDownload($package, $path, $url);
+                $fileName = $this->doDownload($package, $path, $url);
+                break;
             } catch (\Exception $e) {
                 if ($this->io->isDebug()) {
                     $this->io->writeError('');
                     $this->io->writeError('Failed: ['.get_class($e).'] '.$e->getCode().': '.$e->getMessage());
                 } elseif (count($urls)) {
                     $this->io->writeError('');
-                    $this->io->writeError('    Failed, trying the next URL ('.$e->getCode().': '.$e->getMessage().')');
+                    $this->io->writeError(' Failed, trying the next URL ('.$e->getCode().': '.$e->getMessage().')', false);
                 }
 
                 if (!count($urls)) {
@@ -104,7 +108,11 @@ class FileDownloader implements DownloaderInterface
             }
         }
 
-        $this->io->writeError('');
+        if ($output) {
+            $this->io->writeError('');
+        }
+
+        return $fileName;
     }
 
     protected function doDownload(PackageInterface $package, $path, $url)
@@ -129,7 +137,7 @@ class FileDownloader implements DownloaderInterface
             // download if we don't have it in cache or the cache is invalidated
             if (!$this->cache || ($checksum && $checksum !== $this->cache->sha1($cacheKey)) || !$this->cache->copyTo($cacheKey, $fileName)) {
                 if (!$this->outputProgress) {
-                    $this->io->writeError('    Downloading');
+                    $this->io->writeError('Downloading', false);
                 }
 
                 // try to download 3 times then fail hard
@@ -143,9 +151,14 @@ class FileDownloader implements DownloaderInterface
                         if ((0 !== $e->getCode() && !in_array($e->getCode(), array(500, 502, 503, 504))) || !$retries) {
                             throw $e;
                         }
+                        $this->io->writeError('');
                         $this->io->writeError('    Download failed, retrying...', true, IOInterface::VERBOSE);
                         usleep(500000);
                     }
+                }
+
+                if (!$this->outputProgress) {
+                    $this->io->writeError(' (<comment>100%</comment>)', false);
                 }
 
                 if ($this->cache) {
@@ -153,7 +166,7 @@ class FileDownloader implements DownloaderInterface
                     $this->cache->copyFrom($cacheKey, $fileName);
                 }
             } else {
-                $this->io->writeError('    Loading from cache');
+                $this->io->writeError('Loading from cache', false);
             }
 
             if (!file_exists($fileName)) {
@@ -197,16 +210,26 @@ class FileDownloader implements DownloaderInterface
      */
     public function update(PackageInterface $initial, PackageInterface $target, $path)
     {
-        $this->remove($initial, $path);
-        $this->download($target, $path);
+        $name = $target->getName();
+        $from = $initial->getPrettyVersion();
+        $to = $target->getPrettyVersion();
+
+        $this->io->writeError("  - Updating <info>" . $name . "</info> (<comment>" . $from . "</comment> => <comment>" . $to . "</comment>): ", false);
+
+        $this->remove($initial, $path, false);
+        $this->download($target, $path, false);
+
+        $this->io->writeError('');
     }
 
     /**
      * {@inheritDoc}
      */
-    public function remove(PackageInterface $package, $path)
+    public function remove(PackageInterface $package, $path, $output = true)
     {
-        $this->io->writeError("  - Removing <info>" . $package->getName() . "</info> (<comment>" . $package->getFullPrettyVersion() . "</comment>)");
+        if ($output) {
+            $this->io->writeError("  - Removing <info>" . $package->getName() . "</info> (<comment>" . $package->getFullPrettyVersion() . "</comment>)");
+        }
         if (!$this->filesystem->removeDirectory($path)) {
             throw new \RuntimeException('Could not completely delete '.$path.', aborting.');
         }
@@ -236,6 +259,10 @@ class FileDownloader implements DownloaderInterface
     {
         if (!extension_loaded('openssl') && 0 === strpos($url, 'https:')) {
             throw new \RuntimeException('You must enable the openssl extension to download files via https');
+        }
+
+        if ($package->getDistReference()) {
+            $url = UrlUtil::updateDistReference($this->config, $url, $package->getDistReference());
         }
 
         return $url;
