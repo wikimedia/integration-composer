@@ -3,14 +3,12 @@
 	"description": "Composer fork for deployment on Wikimedia CI infra",
 	"license": "MIT",
 	"require": {
-		"composer/composer": "1.6.5",
-		"symfony/console": "<4.0",
-		"symfony/debug": "<4.0",
-		"symfony/finder": "<4.0",
-		"symfony/process": "<4.0",
-		"symfony/filesystem": "<4.0"
+		"composer/composer": "1.6.5"
 	},
 	"config": {
+		"platform": {
+			"php": "5.3.9"
+		},
 		"classmap-authoritative": true,
 		"optimize-autoloader": true
 	}
