@@ -23,7 +23,6 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
             'Symfony\\Component\\Console\\' => 26,
             'Seld\\PharUtils\\' => 15,
             'Seld\\JsonLint\\' => 14,
-            'Seld\\CliPrompt\\' => 15,
         ),
         'P' => 
         array (
@@ -35,6 +34,7 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         ),
         'C' => 
         array (
+            'Composer\\XdebugHandler\\' => 23,
             'Composer\\Spdx\\' => 14,
             'Composer\\Semver\\' => 16,
             'Composer\\CaBundle\\' => 18,
@@ -79,10 +79,6 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         array (
             0 => __DIR__ . '/..' . '/seld/jsonlint/src/Seld/JsonLint',
         ),
-        'Seld\\CliPrompt\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/seld/cli-prompt/src',
-        ),
         'Psr\\Log\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/log/Psr/Log',
@@ -90,6 +86,10 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         'JsonSchema\\' => 
         array (
             0 => __DIR__ . '/..' . '/justinrainbow/json-schema/src/JsonSchema',
+        ),
+        'Composer\\XdebugHandler\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/composer/xdebug-handler/src',
         ),
         'Composer\\Spdx\\' => 
         array (
@@ -127,6 +127,7 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         'Composer\\Command\\DiagnoseCommand' => __DIR__ . '/..' . '/composer/composer/src/Composer/Command/DiagnoseCommand.php',
         'Composer\\Command\\DumpAutoloadCommand' => __DIR__ . '/..' . '/composer/composer/src/Composer/Command/DumpAutoloadCommand.php',
         'Composer\\Command\\ExecCommand' => __DIR__ . '/..' . '/composer/composer/src/Composer/Command/ExecCommand.php',
+        'Composer\\Command\\FundCommand' => __DIR__ . '/..' . '/composer/composer/src/Composer/Command/FundCommand.php',
         'Composer\\Command\\GlobalCommand' => __DIR__ . '/..' . '/composer/composer/src/Composer/Command/GlobalCommand.php',
         'Composer\\Command\\HomeCommand' => __DIR__ . '/..' . '/composer/composer/src/Composer/Command/HomeCommand.php',
         'Composer\\Command\\InitCommand' => __DIR__ . '/..' . '/composer/composer/src/Composer/Command/InitCommand.php',
@@ -245,6 +246,7 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         'Composer\\Package\\Archiver\\PharArchiver' => __DIR__ . '/..' . '/composer/composer/src/Composer/Package/Archiver/PharArchiver.php',
         'Composer\\Package\\Archiver\\ZipArchiver' => __DIR__ . '/..' . '/composer/composer/src/Composer/Package/Archiver/ZipArchiver.php',
         'Composer\\Package\\BasePackage' => __DIR__ . '/..' . '/composer/composer/src/Composer/Package/BasePackage.php',
+        'Composer\\Package\\Comparer\\Comparer' => __DIR__ . '/..' . '/composer/composer/src/Composer/Package/Comparer/Comparer.php',
         'Composer\\Package\\CompletePackage' => __DIR__ . '/..' . '/composer/composer/src/Composer/Package/CompletePackage.php',
         'Composer\\Package\\CompletePackageInterface' => __DIR__ . '/..' . '/composer/composer/src/Composer/Package/CompletePackageInterface.php',
         'Composer\\Package\\Dumper\\ArrayDumper' => __DIR__ . '/..' . '/composer/composer/src/Composer/Package/Dumper/ArrayDumper.php',
@@ -276,6 +278,7 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         'Composer\\Plugin\\PluginEvents' => __DIR__ . '/..' . '/composer/composer/src/Composer/Plugin/PluginEvents.php',
         'Composer\\Plugin\\PluginInterface' => __DIR__ . '/..' . '/composer/composer/src/Composer/Plugin/PluginInterface.php',
         'Composer\\Plugin\\PluginManager' => __DIR__ . '/..' . '/composer/composer/src/Composer/Plugin/PluginManager.php',
+        'Composer\\Plugin\\PreCommandRunEvent' => __DIR__ . '/..' . '/composer/composer/src/Composer/Plugin/PreCommandRunEvent.php',
         'Composer\\Plugin\\PreFileDownloadEvent' => __DIR__ . '/..' . '/composer/composer/src/Composer/Plugin/PreFileDownloadEvent.php',
         'Composer\\Question\\StrictConfirmationQuestion' => __DIR__ . '/..' . '/composer/composer/src/Composer/Question/StrictConfirmationQuestion.php',
         'Composer\\Repository\\ArrayRepository' => __DIR__ . '/..' . '/composer/composer/src/Composer/Repository/ArrayRepository.php',
@@ -320,6 +323,7 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         'Composer\\Repository\\Vcs\\SvnDriver' => __DIR__ . '/..' . '/composer/composer/src/Composer/Repository/Vcs/SvnDriver.php',
         'Composer\\Repository\\Vcs\\VcsDriver' => __DIR__ . '/..' . '/composer/composer/src/Composer/Repository/Vcs/VcsDriver.php',
         'Composer\\Repository\\Vcs\\VcsDriverInterface' => __DIR__ . '/..' . '/composer/composer/src/Composer/Repository/Vcs/VcsDriverInterface.php',
+        'Composer\\Repository\\VersionCacheInterface' => __DIR__ . '/..' . '/composer/composer/src/Composer/Repository/VersionCacheInterface.php',
         'Composer\\Repository\\WritableArrayRepository' => __DIR__ . '/..' . '/composer/composer/src/Composer/Repository/WritableArrayRepository.php',
         'Composer\\Repository\\WritableRepositoryInterface' => __DIR__ . '/..' . '/composer/composer/src/Composer/Repository/WritableRepositoryInterface.php',
         'Composer\\Script\\CommandEvent' => __DIR__ . '/..' . '/composer/composer/src/Composer/Script/CommandEvent.php',
@@ -346,8 +350,10 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         'Composer\\Util\\Git' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/Git.php',
         'Composer\\Util\\GitHub' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/GitHub.php',
         'Composer\\Util\\GitLab' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/GitLab.php',
+        'Composer\\Util\\Hg' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/Hg.php',
         'Composer\\Util\\IniHelper' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/IniHelper.php',
         'Composer\\Util\\NoProxyPattern' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/NoProxyPattern.php',
+        'Composer\\Util\\PackageSorter' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/PackageSorter.php',
         'Composer\\Util\\Perforce' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/Perforce.php',
         'Composer\\Util\\Platform' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/Platform.php',
         'Composer\\Util\\ProcessExecutor' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/ProcessExecutor.php',
@@ -358,7 +364,12 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         'Composer\\Util\\Svn' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/Svn.php',
         'Composer\\Util\\TlsHelper' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/TlsHelper.php',
         'Composer\\Util\\Url' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/Url.php',
+        'Composer\\Util\\Zip' => __DIR__ . '/..' . '/composer/composer/src/Composer/Util/Zip.php',
         'Composer\\XdebugHandler' => __DIR__ . '/..' . '/composer/composer/src/Composer/XdebugHandler.php',
+        'Composer\\XdebugHandler\\PhpConfig' => __DIR__ . '/..' . '/composer/xdebug-handler/src/PhpConfig.php',
+        'Composer\\XdebugHandler\\Process' => __DIR__ . '/..' . '/composer/xdebug-handler/src/Process.php',
+        'Composer\\XdebugHandler\\Status' => __DIR__ . '/..' . '/composer/xdebug-handler/src/Status.php',
+        'Composer\\XdebugHandler\\XdebugHandler' => __DIR__ . '/..' . '/composer/xdebug-handler/src/XdebugHandler.php',
         'JsonSchema\\Constraints\\BaseConstraint' => __DIR__ . '/..' . '/justinrainbow/json-schema/src/JsonSchema/Constraints/BaseConstraint.php',
         'JsonSchema\\Constraints\\CollectionConstraint' => __DIR__ . '/..' . '/justinrainbow/json-schema/src/JsonSchema/Constraints/CollectionConstraint.php',
         'JsonSchema\\Constraints\\Constraint' => __DIR__ . '/..' . '/justinrainbow/json-schema/src/JsonSchema/Constraints/Constraint.php',
@@ -410,14 +421,15 @@ class ComposerStaticInit0885b70fc9de1924487065dee055aaaf
         'Psr\\Log\\LoggerInterface' => __DIR__ . '/..' . '/psr/log/Psr/Log/LoggerInterface.php',
         'Psr\\Log\\LoggerTrait' => __DIR__ . '/..' . '/psr/log/Psr/Log/LoggerTrait.php',
         'Psr\\Log\\NullLogger' => __DIR__ . '/..' . '/psr/log/Psr/Log/NullLogger.php',
-        'Psr\\Log\\Test\\DummyTest' => __DIR__ . '/..' . '/psr/log/Psr/Log/Test/LoggerInterfaceTest.php',
+        'Psr\\Log\\Test\\DummyTest' => __DIR__ . '/..' . '/psr/log/Psr/Log/Test/DummyTest.php',
         'Psr\\Log\\Test\\LoggerInterfaceTest' => __DIR__ . '/..' . '/psr/log/Psr/Log/Test/LoggerInterfaceTest.php',
-        'Seld\\CliPrompt\\CliPrompt' => __DIR__ . '/..' . '/seld/cli-prompt/src/CliPrompt.php',
+        'Psr\\Log\\Test\\TestLogger' => __DIR__ . '/..' . '/psr/log/Psr/Log/Test/TestLogger.php',
         'Seld\\JsonLint\\DuplicateKeyException' => __DIR__ . '/..' . '/seld/jsonlint/src/Seld/JsonLint/DuplicateKeyException.php',
         'Seld\\JsonLint\\JsonParser' => __DIR__ . '/..' . '/seld/jsonlint/src/Seld/JsonLint/JsonParser.php',
         'Seld\\JsonLint\\Lexer' => __DIR__ . '/..' . '/seld/jsonlint/src/Seld/JsonLint/Lexer.php',
         'Seld\\JsonLint\\ParsingException' => __DIR__ . '/..' . '/seld/jsonlint/src/Seld/JsonLint/ParsingException.php',
         'Seld\\JsonLint\\Undefined' => __DIR__ . '/..' . '/seld/jsonlint/src/Seld/JsonLint/Undefined.php',
+        'Seld\\PharUtils\\Linter' => __DIR__ . '/..' . '/seld/phar-utils/src/Linter.php',
         'Seld\\PharUtils\\Timestamps' => __DIR__ . '/..' . '/seld/phar-utils/src/Timestamps.php',
         'Symfony\\Component\\Console\\Application' => __DIR__ . '/..' . '/symfony/console/Application.php',
         'Symfony\\Component\\Console\\Command\\Command' => __DIR__ . '/..' . '/symfony/console/Command/Command.php',

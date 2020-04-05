@@ -3,7 +3,7 @@
 	"description": "Composer fork for deployment on Wikimedia CI infra",
 	"license": "MIT",
 	"require": {
-		"composer/composer": "1.6.5"
+		"composer/composer": "1.10.5"
 	},
 	"config": {
 		"platform": {
