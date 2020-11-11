@@ -8,11 +8,11 @@ deploy Composer on the Wikimedia cluster since:
 
 ## How to update
 
-Use http://getcomposer.org/ itself!
+Use https://getcomposer.org/ itself!
 
 Bump the version in composer.json then refresh it:
 
-    $ composer install
+    $ composer update
 
 To review the list of packages currently installed:
 
@@ -29,6 +29,3 @@ If it looks sane, add and commit for review:
     $ git push refs/for/master
 
 Then ask for review.
-
-The composer executable will be available on the Wikimedia Jenkins slaves at
-`/srv/deployment/integration/composer/vendor/bin/composer`
